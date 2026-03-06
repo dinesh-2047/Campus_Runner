@@ -20,6 +20,7 @@ import 'register_shop_screen.dart';
 import 'requester_home_screen.dart';
 import 'smart_route_screen.dart';
 import '../profile/profile_screen.dart';
+import '../task_history/task_history_screen.dart';
 
 // Use ConsumerStatefulWidget to listen to Riverpod Providers
 class RunnerHomeScreen extends ConsumerStatefulWidget {
@@ -158,6 +159,17 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
       // THE BODY: Handles Loading, Error, and Data states from the Stream
       body: Column(
         children: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TaskHistoryScreen(),
+                ),
+              );
+            },
+            child: const Text("View Task History"),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: campusesAsync.when(
