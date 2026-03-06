@@ -21,6 +21,7 @@ import 'register_shop_screen.dart';
 import 'requester_home_screen.dart';
 import 'smart_route_screen.dart';
 import '../profile/profile_screen.dart';
+import '../tracking/leaderboard_screen.dart';
 
 // Use ConsumerStatefulWidget to listen to Riverpod Providers
 class RunnerHomeScreen extends ConsumerStatefulWidget {
@@ -103,6 +104,16 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
                 : 'Switch to dark mode',
             icon: Icon(isDarkMode ? PhosphorIcons.sun() : PhosphorIcons.moon()),
           ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const LeaderboardScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.leaderboard),
+        ),
           IconButton(onPressed: () {}, icon: Icon(PhosphorIcons.funnel())),
           IconButton(onPressed: () {}, icon: Icon(PhosphorIcons.bell())),
           IconButton(
