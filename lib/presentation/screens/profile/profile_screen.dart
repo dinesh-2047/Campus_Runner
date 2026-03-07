@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../../../core/config/app_mode.dart';
 import '../../../logic/auth_provider.dart';
 import '../../../logic/user_provider.dart';
@@ -113,13 +115,11 @@ class ProfileScreen extends ConsumerWidget {
                             radius: 34,
                             backgroundColor: colors.primaryContainer,
                             backgroundImage: userProfile?.photoUrl != null
-                                ? NetworkImage(userProfile!.photoUrl!)
+                                ? CachedNetworkImageProvider(userProfile!.photoUrl!)
                                 : (user?.photoURL != null
-                                      ? NetworkImage(user!.photoURL!)
-                                      : null),
-                            child:
-                                userProfile?.photoUrl == null &&
-                                    user?.photoURL == null
+                                    ? CachedNetworkImageProvider(user!.photoURL!)
+                                    : null),
+                            child: userProfile?.photoUrl == null && user?.photoURL == null
                                 ? Text(
                                     initials.isEmpty ? 'CR' : initials,
                                     style: theme.textTheme.titleLarge?.copyWith(
@@ -178,37 +178,6 @@ class ProfileScreen extends ConsumerWidget {
                     ).animate().fade(duration: 300.ms).slideY(begin: 0.08, end: 0),
                     const SizedBox(height: 16),
                     Row(
-                          children: [
-                            Expanded(
-                              child: _StatCard(
-                                icon: PhosphorIcons.checkCircle(),
-                                title: 'Completed',
-                                value: '${userProfile?.completedTasks ?? 0}',
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _StatCard(
-                                icon: PhosphorIcons.star(),
-                                title: 'Rating',
-                                value:
-                                    userProfile?.rating.toStringAsFixed(1) ??
-                                    '0.0',
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _StatCard(
-                                icon: PhosphorIcons.users(),
-                                title: 'Reviews',
-                                value: '${userProfile?.totalRatings ?? 0}',
-                              ),
-                            ),
-                          ],
-                        )
-                        .animate()
-                        .fade(delay: 120.ms, duration: 320.ms)
-                        .slideY(begin: 0.1, end: 0),
                       children: [
                         Expanded(
                           child: _StatCard(
@@ -218,7 +187,6 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-
                         Expanded(
                           child: _StatCard(
                             icon: PhosphorIcons.personSimpleRun(),
@@ -227,7 +195,6 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-
                         Expanded(
                           child: _StatCard(
                             icon: PhosphorIcons.star(),
@@ -236,7 +203,6 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-
                         Expanded(
                           child: _StatCard(
                             icon: PhosphorIcons.users(),
