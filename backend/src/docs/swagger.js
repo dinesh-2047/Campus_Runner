@@ -17,6 +17,8 @@ const userSchema = {
       example: "dinesh@vitbhopal.ac.in",
     },
     phoneNumber: { type: "string", example: "+91-9876543210" },
+    campusId: { type: "string", example: "vit-bhopal" },
+    campusName: { type: "string", example: "VIT Bhopal" },
     role: { type: "string", enum: ["requester", "runner", "admin"] },
     isVerified: { type: "boolean", example: true },
     isActive: { type: "boolean", example: true },
@@ -40,6 +42,12 @@ const taskSchema = {
     },
     pickupLocation: { type: "string", example: "Academic Block A" },
     dropoffLocation: { type: "string", example: "Hostel 3 Reception" },
+    campus: { type: "string", example: "VIT Bhopal" },
+    transportMode: {
+      type: "string",
+      enum: ["walk", "bike", "car", "public_transport", "other"],
+      example: "bike",
+    },
     reward: { type: "number", example: 80 },
     status: {
       type: "string",
@@ -165,6 +173,7 @@ const swaggerDocument = {
     version: "1.0.0",
     description:
       "JWT authentication, role-based authorization, profile, task, wallet, and admin moderation APIs for Campus Runner.",
+      "JWT authentication, role-based authorization, profile APIs, task lifecycle APIs, and wallet APIs for Campus Runner.",
   },
   servers: [
     {
@@ -200,6 +209,8 @@ const swaggerDocument = {
           },
           password: { type: "string", example: "strongPassword123" },
           phoneNumber: { type: "string", example: "+91-9876543210" },
+          campusId: { type: "string", example: "vit-bhopal" },
+          campusName: { type: "string", example: "VIT Bhopal" },
           role: {
             type: "string",
             enum: ["requester", "runner", "admin"],
@@ -230,6 +241,24 @@ const swaggerDocument = {
         properties: {
           fullName: { type: "string", example: "Dinesh Kumar" },
           phoneNumber: { type: "string", example: "+91-9876543210" },
+          campusId: { type: "string", example: "vit-bhopal" },
+          campusName: { type: "string", example: "VIT Bhopal" },
+        },
+      },
+      AdminUpdateProfileRequest: {
+        type: "object",
+        properties: {
+          fullName: { type: "string", example: "Dinesh Kumar" },
+          phoneNumber: { type: "string", example: "+91-9876543210" },
+          campusId: { type: "string", example: "vit-bhopal" },
+          campusName: { type: "string", example: "VIT Bhopal" },
+          role: {
+            type: "string",
+            enum: ["requester", "runner", "admin"],
+            example: "runner",
+          },
+          isVerified: { type: "boolean", example: true },
+          isActive: { type: "boolean", example: true },
         },
       },
       UpdateRoleRequest: {
@@ -243,6 +272,18 @@ const swaggerDocument = {
           },
         },
       },
+      UpdateVerificationRequest: {
+        type: "object",
+        required: ["isVerified"],
+        properties: {
+          isVerified: { type: "boolean", example: true },
+        },
+      },
+      UpdateStatusRequest: {
+        type: "object",
+        required: ["isActive"],
+        properties: {
+          isActive: { type: "boolean", example: false },
       CreateTaskRequest: {
         type: "object",
         required: ["title", "description", "pickupLocation", "dropoffLocation"],
@@ -257,6 +298,49 @@ const swaggerDocument = {
           reward: { type: "number", example: 80 },
         },
       },
+          campus: { type: "string", example: "VIT Bhopal" },
+          transportMode: {
+            type: "string",
+            enum: ["walk", "bike", "car", "public_transport", "other"],
+            example: "bike",
+          },
+          reward: { type: "number", example: 80 },
+        },
+      },
+      TaskFeedResponse: apiResponse(
+        {
+          type: "object",
+          properties: {
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/Task" },
+            },
+            pagination: {
+              type: "object",
+              properties: {
+                mode: { type: "string", enum: ["page", "cursor"], example: "page" },
+                page: { type: "integer", example: 1 },
+                limit: { type: "integer", example: 20 },
+                total: { type: "integer", example: 42 },
+                totalPages: { type: "integer", example: 3 },
+                hasMore: { type: "boolean", example: true },
+                nextCursor: { type: "string", nullable: true, example: "eyJjcmVhdGVkQXQiOiIyMDI2LTAzLTA3VDE0OjAwOjAwLjAwMFoiLCJpZCI6IjY3Y2E3MmQ5OTllYTQwZjJhYmM5ODc2NSJ9" },
+                sort: { type: "string", enum: ["asc", "desc"], example: "desc" },
+              },
+            },
+            filters: {
+              type: "object",
+              properties: {
+                search: { type: "string", example: "lab" },
+                campus: { type: "string", example: "VIT Bhopal" },
+                status: { type: "string", example: "open" },
+                transportMode: { type: "string", example: "bike" },
+              },
+            },
+          },
+        },
+        "Tasks fetched successfully",
+      ),
       CancelTaskRequest: {
         type: "object",
         properties: {
@@ -362,6 +446,19 @@ const swaggerDocument = {
         {
           type: "array",
           items: { $ref: "#/components/schemas/Task" },
+          type: "object",
+          properties: {
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/Task" },
+            },
+            pagination: {
+              type: "object",
+            },
+            filters: {
+              type: "object",
+            },
+          },
         },
         "Open tasks fetched successfully",
       ),
@@ -460,6 +557,9 @@ const swaggerDocument = {
                 schema: { $ref: "#/components/schemas/AuthResponse" },
               },
             },
+          },
+          400: {
+            description: "Validation error",
           },
         },
       },
@@ -564,6 +664,91 @@ const swaggerDocument = {
         },
       },
     },
+    "/api/v1/profile": {
+      get: {
+        tags: ["Profile"],
+        summary: "List profiles",
+        description: "Admin-only route to list users with optional filters.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { in: "query", name: "role", schema: { type: "string" } },
+          { in: "query", name: "verified", schema: { type: "boolean" } },
+          { in: "query", name: "active", schema: { type: "boolean" } },
+          { in: "query", name: "campusId", schema: { type: "string" } },
+          { in: "query", name: "search", schema: { type: "string" } },
+        ],
+        responses: {
+          200: {
+            description: "Profiles fetched successfully",
+          },
+        },
+      },
+    },
+    "/api/v1/profile/{userId}": {
+      get: {
+        tags: ["Profile"],
+        summary: "Get user profile by id",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "userId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "User profile fetched successfully",
+          },
+          403: { description: "Admin only route" },
+          404: { description: "User not found" },
+        },
+      },
+      patch: {
+        tags: ["Profile"],
+        summary: "Update user profile by admin",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "userId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/AdminUpdateProfileRequest" },
+            },
+          },
+        },
+        responses: {
+          200: { description: "User profile updated successfully" },
+          403: { description: "Admin only route" },
+        },
+      },
+      delete: {
+        tags: ["Profile"],
+        summary: "Soft delete user profile",
+        description: "Admin-only route that deactivates a user and clears refresh token.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "userId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          200: { description: "User soft deleted successfully" },
+          403: { description: "Admin only route" },
+        },
+      },
+    },
     "/api/v1/profile/{userId}/role": {
       patch: {
         tags: ["Profile"],
@@ -592,6 +777,60 @@ const swaggerDocument = {
         },
       },
     },
+    "/api/v1/profile/{userId}/verification": {
+      patch: {
+        tags: ["Profile"],
+        summary: "Update verification status",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "userId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/UpdateVerificationRequest" },
+            },
+          },
+        },
+        responses: {
+          200: { description: "User verification status updated successfully" },
+          403: { description: "Admin only route" },
+        },
+      },
+    },
+    "/api/v1/profile/{userId}/status": {
+      patch: {
+        tags: ["Profile"],
+        summary: "Activate or deactivate user",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "userId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/UpdateStatusRequest" },
+            },
+          },
+        },
+        responses: {
+          200: { description: "User active status updated successfully" },
+          403: { description: "Admin only route" },
+        },
+      },
+    },
     "/api/v1/tasks/protected-actions": {
       get: {
         tags: ["Tasks"],
@@ -609,6 +848,28 @@ const swaggerDocument = {
         tags: ["Tasks"],
         summary: "List all open tasks",
         security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "query",
+            name: "page",
+            schema: { type: "integer", example: 1 },
+          },
+          {
+            in: "query",
+            name: "limit",
+            schema: { type: "integer", example: 20 },
+          },
+          {
+            in: "query",
+            name: "sort",
+            schema: { type: "string", enum: ["asc", "desc"], example: "desc" },
+          },
+          {
+            in: "query",
+            name: "cursor",
+            schema: { type: "string" },
+          },
+        ],
         responses: {
           200: {
             description: "Open tasks fetched successfully",
@@ -622,6 +883,70 @@ const swaggerDocument = {
       },
     },
     "/api/v1/tasks": {
+      get: {
+        tags: ["Tasks"],
+        summary: "Search, filter, sort, and paginate tasks",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "query",
+            name: "search",
+            schema: { type: "string", example: "lab" },
+          },
+          {
+            in: "query",
+            name: "campus",
+            schema: { type: "string", example: "VIT Bhopal" },
+          },
+          {
+            in: "query",
+            name: "status",
+            schema: {
+              type: "string",
+              enum: ["open", "accepted", "in_progress", "completed", "cancelled"],
+            },
+          },
+          {
+            in: "query",
+            name: "transportMode",
+            schema: {
+              type: "string",
+              enum: ["walk", "bike", "car", "public_transport", "other"],
+            },
+          },
+          {
+            in: "query",
+            name: "sort",
+            schema: { type: "string", enum: ["asc", "desc"], example: "desc" },
+          },
+          {
+            in: "query",
+            name: "page",
+            schema: { type: "integer", example: 1 },
+          },
+          {
+            in: "query",
+            name: "limit",
+            schema: { type: "integer", example: 20 },
+          },
+          {
+            in: "query",
+            name: "cursor",
+            schema: { type: "string" },
+            description: "Optional cursor token for cursor-based pagination; when provided, page is ignored.",
+          },
+        ],
+        responses: {
+          200: {
+            description: "Tasks fetched successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/TaskFeedResponse" },
+              },
+            },
+          },
+        },
+      },
       post: {
         tags: ["Tasks"],
         summary: "Create a new task",
@@ -674,7 +999,7 @@ const swaggerDocument = {
     "/api/v1/tasks/{taskId}/accept": {
       patch: {
         tags: ["Tasks"],
-        summary: "Accept an open task",
+        summary: "Accept an open task atomically",
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -687,6 +1012,27 @@ const swaggerDocument = {
         responses: {
           200: {
             description: "Task accepted successfully",
+          },
+        },
+      },
+    },
+    "/api/v1/tasks/{taskId}/in-progress": {
+      patch: {
+        tags: ["Tasks"],
+        summary: "Mark an accepted task as in progress",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "taskId",
+            required: true,
+            schema: { type: "string" },
+          },
+          403: {
+            description: "Requester cannot accept their own task",
+          },
+          409: {
+            description: "Task already accepted or not open",
           },
         },
       },
@@ -836,6 +1182,11 @@ const swaggerDocument = {
         responses: {
           201: {
             description: "Wallet credit transaction created successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/WalletTransactionResponse" },
+              },
+            },
           },
         },
       },
@@ -856,6 +1207,11 @@ const swaggerDocument = {
         responses: {
           201: {
             description: "Wallet debit transaction created successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/WalletTransactionResponse" },
+              },
+            },
           },
         },
       },
@@ -992,6 +1348,7 @@ const swaggerDocument = {
           {
             in: "path",
             name: "reportId",
+            name: "transactionId",
             required: true,
             schema: { type: "string" },
           },
@@ -1001,6 +1358,7 @@ const swaggerDocument = {
           content: {
             "application/json": {
               schema: { $ref: "#/components/schemas/UpdateReportStatusRequest" },
+              schema: { $ref: "#/components/schemas/UpdateWalletTransactionStatusRequest" },
             },
           },
         },
@@ -1012,6 +1370,7 @@ const swaggerDocument = {
                 schema: { $ref: "#/components/schemas/ReportResponse" },
               },
             },
+            description: "Wallet transaction status updated successfully",
           },
         },
       },

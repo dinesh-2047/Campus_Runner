@@ -8,6 +8,8 @@ const allowedTaskStatuses = [
   "cancelled",
 ];
 
+const allowedTransportModes = ["walk", "bike", "car", "public_transport", "other"];
+
 const taskSchema = new mongoose.Schema(
   {
     title: {
@@ -29,6 +31,18 @@ const taskSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+    },
+    campus: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+    transportMode: {
+      type: String,
+      enum: allowedTransportModes,
+      default: "other",
+      index: true,
     },
     reward: {
       type: Number,
@@ -101,9 +115,11 @@ const taskSchema = new mongoose.Schema(
 
 taskSchema.index({ status: 1, createdAt: -1 });
 taskSchema.index({ isArchived: 1, status: 1, createdAt: -1 });
+taskSchema.index({ campus: 1, status: 1, createdAt: -1 });
+taskSchema.index({ transportMode: 1, status: 1, createdAt: -1 });
 taskSchema.index({ requestedBy: 1, createdAt: -1 });
 taskSchema.index({ assignedRunner: 1, createdAt: -1 });
 
 const Task = mongoose.model("Task", taskSchema);
 
-export { Task, allowedTaskStatuses };
+export { Task, allowedTaskStatuses, allowedTransportModes };
