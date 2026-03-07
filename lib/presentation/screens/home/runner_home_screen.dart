@@ -20,6 +20,7 @@ import 'register_shop_screen.dart';
 import 'requester_home_screen.dart';
 import 'smart_route_screen.dart';
 import '../profile/profile_screen.dart';
+import '../../../data/services/smart_task_service.dart';
 
 // Use ConsumerStatefulWidget to listen to Riverpod Providers
 class RunnerHomeScreen extends ConsumerStatefulWidget {
@@ -30,6 +31,7 @@ class RunnerHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
+  final SmartTaskService _smartTaskService = SmartTaskService();
   bool _isLoggedIn() {
     if (!AppMode.backendEnabled) return true;
     return ref.read(authRepositoryProvider).getCurrentUser() != null;
@@ -72,6 +74,8 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
   Widget build(BuildContext context) {
     // WATCH THE STREAM: This line connects UI to Firebase and updates in real-time
     final tasksAsync = ref.watch(tasksStreamProvider);
+    final locationService = ref.read(locationServiceProvider);
+    final runnerLocation = locationService.currentLocation;
     final campusesAsync = ref.watch(campusesStreamProvider);
     final selectedCampusId = ref.watch(selectedCampusProvider);
 
@@ -154,9 +158,55 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
         icon: Icon(PhosphorIcons.plus()),
         label: const Text("Post Task"),
       ),
+      
 
       // THE BODY: Handles Loading, Error, and Data states from the Stream
       body: Column(
+        if (runnerLocation != null)
+        FutureBuilder(
+          future: _smartTaskService.getRecommendedTasks(runnerLocation),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const SizedBox();
+
+            final recommendedTasks = snapshot.data!;
+
+            if (recommendedTasks.isEmpty) return const SizedBox();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    "Recommended Tasks",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: recommendedTasks.length,
+                  itemBuilder: (context, index) {
+                    final task = recommendedTasks[index].data();
+
+                    return TaskCard(
+                      title: task['title'],
+                      pickup: task['pickup'],
+                      drop: task['drop'],
+                      price: "₹${task['price']}",
+                      time: "Recommended",
+                      transportMode: task['transportMode'],
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        ),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
