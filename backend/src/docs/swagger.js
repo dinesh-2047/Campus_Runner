@@ -36,6 +36,12 @@ const taskSchema = {
     },
     pickupLocation: { type: "string", example: "Academic Block A" },
     dropoffLocation: { type: "string", example: "Hostel 3 Reception" },
+    campus: { type: "string", example: "VIT Bhopal" },
+    transportMode: {
+      type: "string",
+      enum: ["walk", "bike", "car", "public_transport", "other"],
+      example: "bike",
+    },
     reward: { type: "number", example: 80 },
     status: {
       type: "string",
@@ -209,9 +215,49 @@ const swaggerDocument = {
           },
           pickupLocation: { type: "string", example: "Academic Block A" },
           dropoffLocation: { type: "string", example: "Hostel 3 Reception" },
+          campus: { type: "string", example: "VIT Bhopal" },
+          transportMode: {
+            type: "string",
+            enum: ["walk", "bike", "car", "public_transport", "other"],
+            example: "bike",
+          },
           reward: { type: "number", example: 80 },
         },
       },
+      TaskFeedResponse: apiResponse(
+        {
+          type: "object",
+          properties: {
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/Task" },
+            },
+            pagination: {
+              type: "object",
+              properties: {
+                mode: { type: "string", enum: ["page", "cursor"], example: "page" },
+                page: { type: "integer", example: 1 },
+                limit: { type: "integer", example: 20 },
+                total: { type: "integer", example: 42 },
+                totalPages: { type: "integer", example: 3 },
+                hasMore: { type: "boolean", example: true },
+                nextCursor: { type: "string", nullable: true, example: "eyJjcmVhdGVkQXQiOiIyMDI2LTAzLTA3VDE0OjAwOjAwLjAwMFoiLCJpZCI6IjY3Y2E3MmQ5OTllYTQwZjJhYmM5ODc2NSJ9" },
+                sort: { type: "string", enum: ["asc", "desc"], example: "desc" },
+              },
+            },
+            filters: {
+              type: "object",
+              properties: {
+                search: { type: "string", example: "lab" },
+                campus: { type: "string", example: "VIT Bhopal" },
+                status: { type: "string", example: "open" },
+                transportMode: { type: "string", example: "bike" },
+              },
+            },
+          },
+        },
+        "Tasks fetched successfully",
+      ),
       CancelTaskRequest: {
         type: "object",
         properties: {
@@ -282,8 +328,19 @@ const swaggerDocument = {
       ),
       TaskListResponse: apiResponse(
         {
-          type: "array",
-          items: { $ref: "#/components/schemas/Task" },
+          type: "object",
+          properties: {
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/Task" },
+            },
+            pagination: {
+              type: "object",
+            },
+            filters: {
+              type: "object",
+            },
+          },
         },
         "Open tasks fetched successfully",
       ),
@@ -502,6 +559,28 @@ const swaggerDocument = {
         tags: ["Tasks"],
         summary: "List all open tasks",
         security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "query",
+            name: "page",
+            schema: { type: "integer", example: 1 },
+          },
+          {
+            in: "query",
+            name: "limit",
+            schema: { type: "integer", example: 20 },
+          },
+          {
+            in: "query",
+            name: "sort",
+            schema: { type: "string", enum: ["asc", "desc"], example: "desc" },
+          },
+          {
+            in: "query",
+            name: "cursor",
+            schema: { type: "string" },
+          },
+        ],
         responses: {
           200: {
             description: "Open tasks fetched successfully",
@@ -515,6 +594,70 @@ const swaggerDocument = {
       },
     },
     "/api/v1/tasks": {
+      get: {
+        tags: ["Tasks"],
+        summary: "Search, filter, sort, and paginate tasks",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "query",
+            name: "search",
+            schema: { type: "string", example: "lab" },
+          },
+          {
+            in: "query",
+            name: "campus",
+            schema: { type: "string", example: "VIT Bhopal" },
+          },
+          {
+            in: "query",
+            name: "status",
+            schema: {
+              type: "string",
+              enum: ["open", "accepted", "in_progress", "completed", "cancelled"],
+            },
+          },
+          {
+            in: "query",
+            name: "transportMode",
+            schema: {
+              type: "string",
+              enum: ["walk", "bike", "car", "public_transport", "other"],
+            },
+          },
+          {
+            in: "query",
+            name: "sort",
+            schema: { type: "string", enum: ["asc", "desc"], example: "desc" },
+          },
+          {
+            in: "query",
+            name: "page",
+            schema: { type: "integer", example: 1 },
+          },
+          {
+            in: "query",
+            name: "limit",
+            schema: { type: "integer", example: 20 },
+          },
+          {
+            in: "query",
+            name: "cursor",
+            schema: { type: "string" },
+            description: "Optional cursor token for cursor-based pagination; when provided, page is ignored.",
+          },
+        ],
+        responses: {
+          200: {
+            description: "Tasks fetched successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/TaskFeedResponse" },
+              },
+            },
+          },
+        },
+      },
       post: {
         tags: ["Tasks"],
         summary: "Create a new task",

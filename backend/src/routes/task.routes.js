@@ -6,6 +6,7 @@ import {
   completeTask,
   createTask,
   getTaskById,
+  listTasks,
   listOpenTasks,
   listProtectedTaskActions,
   markTaskInProgress,
@@ -17,6 +18,7 @@ const router = Router();
 router.use(verifyJWT);
 
 router.get("/protected-actions", listProtectedTaskActions);
+router.get("/", listTasks);
 router.get("/open", listOpenTasks);
 router.get("/:taskId", getTaskById);
 router.post("/", authorizeRoles("requester", "admin"), createTask);
