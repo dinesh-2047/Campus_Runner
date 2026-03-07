@@ -20,6 +20,7 @@ import 'register_shop_screen.dart';
 import 'requester_home_screen.dart';
 import 'smart_route_screen.dart';
 import '../profile/profile_screen.dart';
+import '../../widgets/cards/earnings_dashboard_card.dart';
 
 // Use ConsumerStatefulWidget to listen to Riverpod Providers
 class RunnerHomeScreen extends ConsumerStatefulWidget {
@@ -158,6 +159,15 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
       // THE BODY: Handles Loading, Error, and Data states from the Stream
       body: Column(
         children: [
+           Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: EarningsDashboardCard(
+            weeklyEarnings: 1200,
+            monthlyEarnings: 5400,
+            completedTasks: 32,
+            avgPerTask: 168,
+          ),
+        ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: campusesAsync.when(
