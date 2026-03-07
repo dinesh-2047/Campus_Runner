@@ -78,6 +78,23 @@ const taskSchema = {
     completedAt: {
       anyOf: [{ type: "string", format: "date-time" }, { type: "null" }],
     },
+    settlementStatus: {
+      type: "string",
+      enum: ["pending", "settled", "not_required"],
+      example: "settled",
+    },
+    settlementAmount: { type: "number", example: 80 },
+    settlementReference: {
+      type: "string",
+      example: "TASK-SETTLEMENT-67ca72d999ea40f2abc98765",
+    },
+    settlementTransactionId: {
+      anyOf: [{ type: "string" }, { type: "null" }],
+      example: "67ca72d999ea40f2abc45678",
+    },
+    settledAt: {
+      anyOf: [{ type: "string", format: "date-time" }, { type: "null" }],
+    },
     cancelledAt: {
       anyOf: [{ type: "string", format: "date-time" }, { type: "null" }],
     },
@@ -115,6 +132,10 @@ const walletTransactionSchema = {
       example: "Manual payout credit for completed campus task",
     },
     reference: { type: "string", example: "TASK-PAYOUT-001" },
+    sourceTaskId: {
+      anyOf: [{ type: "string" }, { type: "null" }],
+      example: "67ca72d999ea40f2abc98765",
+    },
     failureReason: { type: "string", example: "Bank transfer rejected" },
     initiatedBy: {
       anyOf: [{ $ref: "#/components/schemas/User" }, { type: "null" }],
