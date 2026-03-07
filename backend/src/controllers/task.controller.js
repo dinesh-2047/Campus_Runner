@@ -55,6 +55,10 @@ const sanitizeTask = (task) => ({
   completedAt: task.completedAt,
   cancelledAt: task.cancelledAt,
   cancellationReason: task.cancellationReason,
+  isArchived: task.isArchived,
+  archivedAt: task.archivedAt,
+  archiveReason: task.archiveReason,
+  archivedBy: sanitizeTaskUser(task.archivedBy),
   createdAt: task.createdAt,
   updatedAt: task.updatedAt,
 });
@@ -79,13 +83,25 @@ const assertTransitionAllowed = (task, nextStatus) => {
 const fetchTaskOrThrow = async (taskId) => {
   ensureValidTaskId(taskId);
 
-  const task = await Task.findById(taskId).populate(populateTaskFields);
+  const task = await Task.findById(taskId).populate([
+    ...populateTaskFields,
+    {
+      path: "archivedBy",
+      select: "fullName email phoneNumber role isVerified isActive",
+    },
+  ]);
 
   if (!task) {
     throw new ApiError(404, "Task not found");
   }
 
   return task;
+};
+
+const ensureTaskNotArchived = (task) => {
+  if (task.isArchived) {
+    throw new ApiError(409, "Archived tasks cannot be modified through lifecycle routes");
+  }
 };
 
 const ensureAssignedRunner = (task, user) => {
@@ -140,8 +156,14 @@ const createTask = asyncHandler(async (req, res) => {
 });
 
 const listOpenTasks = asyncHandler(async (_, res) => {
-  const tasks = await Task.find({ status: "open" })
-    .populate(populateTaskFields)
+  const tasks = await Task.find({ status: "open", isArchived: false })
+    .populate([
+      ...populateTaskFields,
+      {
+        path: "archivedBy",
+        select: "fullName email phoneNumber role isVerified isActive",
+      },
+    ])
     .sort({ createdAt: -1 });
 
   res
@@ -160,6 +182,7 @@ const getTaskById = asyncHandler(async (req, res) => {
 const acceptTask = asyncHandler(async (req, res) => {
   const task = await fetchTaskOrThrow(req.params.taskId);
 
+  ensureTaskNotArchived(task);
   assertTransitionAllowed(task, "accepted");
 
   task.status = "accepted";
@@ -181,6 +204,7 @@ const acceptTask = asyncHandler(async (req, res) => {
 const markTaskInProgress = asyncHandler(async (req, res) => {
   const task = await fetchTaskOrThrow(req.params.taskId);
 
+  ensureTaskNotArchived(task);
   ensureAssignedRunner(task, req.user);
   assertTransitionAllowed(task, "in_progress");
 
@@ -198,6 +222,7 @@ const markTaskInProgress = asyncHandler(async (req, res) => {
 const completeTask = asyncHandler(async (req, res) => {
   const task = await fetchTaskOrThrow(req.params.taskId);
 
+  ensureTaskNotArchived(task);
   ensureAssignedRunner(task, req.user);
   assertTransitionAllowed(task, "completed");
 
@@ -216,6 +241,7 @@ const cancelTask = asyncHandler(async (req, res) => {
   const task = await fetchTaskOrThrow(req.params.taskId);
   const { cancellationReason } = req.body;
 
+  ensureTaskNotArchived(task);
   ensureTaskRequesterOrAdmin(task, req.user);
   assertTransitionAllowed(task, "cancelled");
 

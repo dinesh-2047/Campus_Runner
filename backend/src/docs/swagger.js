@@ -20,6 +20,10 @@ const userSchema = {
     role: { type: "string", enum: ["requester", "runner", "admin"] },
     isVerified: { type: "boolean", example: true },
     isActive: { type: "boolean", example: true },
+    suspendedAt: {
+      anyOf: [{ type: "string", format: "date-time" }, { type: "null" }],
+    },
+    suspensionReason: { type: "string", example: "Suspended by admin moderation" },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
   },
@@ -42,8 +46,16 @@ const taskSchema = {
       enum: ["open", "accepted", "in_progress", "completed", "cancelled"],
       example: "open",
     },
+    isArchived: { type: "boolean", example: false },
+    archivedAt: {
+      anyOf: [{ type: "string", format: "date-time" }, { type: "null" }],
+    },
+    archiveReason: { type: "string", example: "Archived by admin moderation" },
     requestedBy: { $ref: "#/components/schemas/User" },
     assignedRunner: {
+      anyOf: [{ $ref: "#/components/schemas/User" }, { type: "null" }],
+    },
+    archivedBy: {
       anyOf: [{ $ref: "#/components/schemas/User" }, { type: "null" }],
     },
     acceptedAt: {
@@ -59,6 +71,78 @@ const taskSchema = {
       anyOf: [{ type: "string", format: "date-time" }, { type: "null" }],
     },
     cancellationReason: { type: "string", example: "Requester no longer needs the task" },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
+  },
+};
+
+const walletTransactionSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string", example: "67ca72d999ea40f2abc45678" },
+    user: { $ref: "#/components/schemas/User" },
+    type: { type: "string", enum: ["credit", "debit"], example: "credit" },
+    amount: { type: "number", example: 150 },
+    status: {
+      type: "string",
+      enum: ["pending", "completed", "failed"],
+      example: "completed",
+    },
+    description: {
+      type: "string",
+      example: "Manual payout credit for completed campus task",
+    },
+    reference: { type: "string", example: "TASK-PAYOUT-001" },
+    failureReason: { type: "string", example: "Bank transfer rejected" },
+    initiatedBy: {
+      anyOf: [{ $ref: "#/components/schemas/User" }, { type: "null" }],
+    },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
+  },
+};
+
+const walletBalanceSchema = {
+  type: "object",
+  properties: {
+    userId: { type: "string", example: "67ca72d999ea40f2abc12345" },
+    currentBalance: { type: "number", example: 420 },
+    totalCredited: { type: "number", example: 650 },
+    totalDebited: { type: "number", example: 230 },
+    pendingCredits: { type: "number", example: 100 },
+    pendingDebits: { type: "number", example: 50 },
+    failedTransactions: { type: "integer", example: 1 },
+    transactionCount: { type: "integer", example: 8 },
+    currency: { type: "string", example: "INR" },
+  },
+};
+
+const reportSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string", example: "67ca72d999ea40f2abc65432" },
+    entityType: { type: "string", enum: ["user", "task"], example: "task" },
+    reporter: { $ref: "#/components/schemas/User" },
+    reportedUser: {
+      anyOf: [{ $ref: "#/components/schemas/User" }, { type: "null" }],
+    },
+    reportedTask: {
+      anyOf: [{ $ref: "#/components/schemas/Task" }, { type: "null" }],
+    },
+    reason: { type: "string", example: "Fake task listing" },
+    details: { type: "string", example: "The requester repeatedly posts invalid offers." },
+    status: {
+      type: "string",
+      enum: ["open", "reviewed", "resolved", "dismissed"],
+      example: "open",
+    },
+    reviewedBy: {
+      anyOf: [{ $ref: "#/components/schemas/User" }, { type: "null" }],
+    },
+    reviewedAt: {
+      anyOf: [{ type: "string", format: "date-time" }, { type: "null" }],
+    },
+    resolutionNote: { type: "string", example: "Suspended offending user and archived related task." },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
   },
@@ -80,7 +164,7 @@ const swaggerDocument = {
     title: "Campus Runner Backend API",
     version: "1.0.0",
     description:
-      "JWT authentication, role-based authorization, profile APIs, and task lifecycle APIs for Campus Runner.",
+      "JWT authentication, role-based authorization, profile, task, wallet, and admin moderation APIs for Campus Runner.",
   },
   servers: [
     {
@@ -92,52 +176,18 @@ const swaggerDocument = {
     { name: "Health", description: "Service status routes" },
     { name: "Auth", description: "Authentication and session routes" },
     { name: "Profile", description: "Protected profile routes" },
-    { name: "Tasks", description: "Protected task access routes" },
+    { name: "Tasks", description: "Protected task lifecycle routes" },
     { name: "Wallet", description: "Wallet balance and ledger routes" },
+    { name: "Admin", description: "Admin moderation routes" },
   ],
   components: {
     securitySchemes: bearerSecurityScheme,
     schemas: {
       User: userSchema,
-      WalletTransaction: {
-        type: "object",
-        properties: {
-          id: { type: "string", example: "67ca72d999ea40f2abc45678" },
-          user: { $ref: "#/components/schemas/User" },
-          type: { type: "string", enum: ["credit", "debit"], example: "credit" },
-          amount: { type: "number", example: 150 },
-          status: {
-            type: "string",
-            enum: ["pending", "completed", "failed"],
-            example: "completed",
-          },
-          description: {
-            type: "string",
-            example: "Manual payout credit for completed campus task",
-          },
-          reference: { type: "string", example: "TASK-PAYOUT-001" },
-          failureReason: { type: "string", example: "Bank transfer rejected" },
-          initiatedBy: {
-            anyOf: [{ $ref: "#/components/schemas/User" }, { type: "null" }],
-          },
-          createdAt: { type: "string", format: "date-time" },
-          updatedAt: { type: "string", format: "date-time" },
-        },
-      },
-      WalletBalance: {
-        type: "object",
-        properties: {
-          userId: { type: "string", example: "67ca72d999ea40f2abc12345" },
-          currentBalance: { type: "number", example: 420 },
-          totalCredited: { type: "number", example: 650 },
-          totalDebited: { type: "number", example: 230 },
-          pendingCredits: { type: "number", example: 100 },
-          pendingDebits: { type: "number", example: 50 },
-          failedTransactions: { type: "integer", example: 1 },
-          transactionCount: { type: "integer", example: 8 },
-          currency: { type: "string", example: "INR" },
-        },
-      },
+      Task: taskSchema,
+      WalletTransaction: walletTransactionSchema,
+      WalletBalance: walletBalanceSchema,
+      Report: reportSchema,
       RegisterRequest: {
         type: "object",
         required: ["fullName", "email", "password"],
@@ -193,6 +243,29 @@ const swaggerDocument = {
           },
         },
       },
+      CreateTaskRequest: {
+        type: "object",
+        required: ["title", "description", "pickupLocation", "dropoffLocation"],
+        properties: {
+          title: { type: "string", example: "Pick up lab printouts" },
+          description: {
+            type: "string",
+            example: "Collect the printed assignment from Block A and deliver it to Hostel 3.",
+          },
+          pickupLocation: { type: "string", example: "Academic Block A" },
+          dropoffLocation: { type: "string", example: "Hostel 3 Reception" },
+          reward: { type: "number", example: 80 },
+        },
+      },
+      CancelTaskRequest: {
+        type: "object",
+        properties: {
+          cancellationReason: {
+            type: "string",
+            example: "Requester no longer needs the item delivered",
+          },
+        },
+      },
       CreateWalletTransactionRequest: {
         type: "object",
         required: ["userId", "amount", "description"],
@@ -226,6 +299,39 @@ const swaggerDocument = {
           },
         },
       },
+      SuspendUserRequest: {
+        type: "object",
+        properties: {
+          suspensionReason: {
+            type: "string",
+            example: "Repeated abuse reports from runners",
+          },
+        },
+      },
+      ArchiveTaskRequest: {
+        type: "object",
+        properties: {
+          archiveReason: {
+            type: "string",
+            example: "Fake or abusive task listing",
+          },
+        },
+      },
+      UpdateReportStatusRequest: {
+        type: "object",
+        required: ["status"],
+        properties: {
+          status: {
+            type: "string",
+            enum: ["open", "reviewed", "resolved", "dismissed"],
+            example: "resolved",
+          },
+          resolutionNote: {
+            type: "string",
+            example: "Suspended offending user and archived related task",
+          },
+        },
+      },
       AuthResponse: apiResponse(
         {
           type: "object",
@@ -248,6 +354,17 @@ const swaggerDocument = {
           },
         },
       },
+      TaskResponse: apiResponse(
+        { $ref: "#/components/schemas/Task" },
+        "Task fetched successfully",
+      ),
+      TaskListResponse: apiResponse(
+        {
+          type: "array",
+          items: { $ref: "#/components/schemas/Task" },
+        },
+        "Open tasks fetched successfully",
+      ),
       WalletBalanceResponse: apiResponse(
         { $ref: "#/components/schemas/WalletBalance" },
         "Wallet balance fetched successfully",
@@ -276,40 +393,38 @@ const swaggerDocument = {
           },
         },
         "Wallet transactions fetched successfully",
-      Task: taskSchema,
-      CreateTaskRequest: {
-        type: "object",
-        required: ["title", "description", "pickupLocation", "dropoffLocation"],
-        properties: {
-          title: { type: "string", example: "Pick up lab printouts" },
-          description: {
-            type: "string",
-            example: "Collect the printed assignment from Block A and deliver it to Hostel 3.",
-          },
-          pickupLocation: { type: "string", example: "Academic Block A" },
-          dropoffLocation: { type: "string", example: "Hostel 3 Reception" },
-          reward: { type: "number", example: 80 },
-        },
-      },
-      CancelTaskRequest: {
-        type: "object",
-        properties: {
-          cancellationReason: {
-            type: "string",
-            example: "Requester no longer needs the item delivered",
-          },
-        },
-      },
-      TaskResponse: apiResponse(
-        { $ref: "#/components/schemas/Task" },
-        "Task fetched successfully",
       ),
-      TaskListResponse: apiResponse(
+      ReportResponse: apiResponse(
+        { $ref: "#/components/schemas/Report" },
+        "Report status updated successfully",
+      ),
+      ReportListResponse: apiResponse(
         {
-          type: "array",
-          items: { $ref: "#/components/schemas/Task" },
+          type: "object",
+          properties: {
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/Report" },
+            },
+            pagination: {
+              type: "object",
+              properties: {
+                page: { type: "integer", example: 1 },
+                limit: { type: "integer", example: 20 },
+                total: { type: "integer", example: 8 },
+                totalPages: { type: "integer", example: 1 },
+              },
+            },
+            filters: {
+              type: "object",
+              properties: {
+                status: { type: "string", example: "open" },
+                entityType: { type: "string", example: "task" },
+              },
+            },
+          },
         },
-        "Open tasks fetched successfully",
+        "Reported issues fetched successfully",
       ),
     },
   },
@@ -346,14 +461,6 @@ const swaggerDocument = {
               },
             },
           },
-          400: {
-            description: "Validation error",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ErrorResponse" },
-              },
-            },
-          },
         },
       },
     },
@@ -380,11 +487,6 @@ const swaggerDocument = {
           },
           401: {
             description: "Invalid credentials",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ErrorResponse" },
-              },
-            },
           },
         },
       },
@@ -405,14 +507,6 @@ const swaggerDocument = {
           200: {
             description: "Access token refreshed",
           },
-          401: {
-            description: "Invalid or missing refresh token",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ErrorResponse" },
-              },
-            },
-          },
         },
       },
     },
@@ -424,14 +518,6 @@ const swaggerDocument = {
         responses: {
           200: {
             description: "User logged out successfully",
-          },
-          401: {
-            description: "Unauthorized",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ErrorResponse" },
-              },
-            },
           },
         },
       },
@@ -445,14 +531,6 @@ const swaggerDocument = {
           200: {
             description: "Session valid",
           },
-          401: {
-            description: "Unauthorized",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ErrorResponse" },
-              },
-            },
-          },
         },
       },
     },
@@ -464,14 +542,6 @@ const swaggerDocument = {
         responses: {
           200: {
             description: "Profile fetched successfully",
-            content: {
-              "application/json": {
-                schema: apiResponse(
-                  { $ref: "#/components/schemas/User" },
-                  "Profile fetched successfully",
-                ),
-              },
-            },
           },
         },
       },
@@ -490,9 +560,6 @@ const swaggerDocument = {
         responses: {
           200: {
             description: "Profile updated successfully",
-          },
-          400: {
-            description: "Nothing to update",
           },
         },
       },
@@ -521,9 +588,6 @@ const swaggerDocument = {
         responses: {
           200: {
             description: "User role updated successfully",
-          },
-          403: {
-            description: "Admin only route",
           },
         },
       },
@@ -579,9 +643,6 @@ const swaggerDocument = {
               },
             },
           },
-          403: {
-            description: "Requester/admin only route",
-          },
         },
       },
     },
@@ -607,9 +668,6 @@ const swaggerDocument = {
               },
             },
           },
-          404: {
-            description: "Task not found",
-          },
         },
       },
     },
@@ -629,17 +687,74 @@ const swaggerDocument = {
         responses: {
           200: {
             description: "Task accepted successfully",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/TaskResponse" },
-              },
+          },
+        },
+      },
+    },
+    "/api/v1/tasks/{taskId}/in-progress": {
+      patch: {
+        tags: ["Tasks"],
+        summary: "Mark an accepted task as in progress",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "taskId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Task marked as in progress successfully",
+          },
+        },
+      },
+    },
+    "/api/v1/tasks/{taskId}/complete": {
+      patch: {
+        tags: ["Tasks"],
+        summary: "Complete an in-progress task",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "taskId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Task completed successfully",
+          },
+        },
+      },
+    },
+    "/api/v1/tasks/{taskId}/cancel": {
+      patch: {
+        tags: ["Tasks"],
+        summary: "Cancel a task",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "taskId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CancelTaskRequest" },
             },
           },
-          409: {
-            description: "Illegal task transition",
-          },
-          403: {
-            description: "Runner/admin only route",
+        },
+        responses: {
+          200: {
+            description: "Task cancelled successfully",
           },
         },
       },
@@ -665,8 +780,6 @@ const swaggerDocument = {
       get: {
         tags: ["Wallet"],
         summary: "Get wallet transaction history",
-        description:
-          "Returns the current user's wallet history. Admins can optionally pass a userId query parameter to inspect another user's ledger.",
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -723,14 +836,6 @@ const swaggerDocument = {
         responses: {
           201: {
             description: "Wallet credit transaction created successfully",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/WalletTransactionResponse" },
-              },
-            },
-          },
-          403: {
-            description: "Admin only route",
           },
         },
       },
@@ -751,14 +856,6 @@ const swaggerDocument = {
         responses: {
           201: {
             description: "Wallet debit transaction created successfully",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/WalletTransactionResponse" },
-              },
-            },
-          },
-          403: {
-            description: "Admin only route",
           },
         },
       },
@@ -767,72 +864,11 @@ const swaggerDocument = {
       patch: {
         tags: ["Wallet"],
         summary: "Update wallet transaction status",
-    "/api/v1/tasks/{taskId}/in-progress": {
-      patch: {
-        tags: ["Tasks"],
-        summary: "Mark an accepted task as in progress",
-        security: [{ bearerAuth: [] }],
-        parameters: [
-          {
-            in: "path",
-            name: "taskId",
-            required: true,
-            schema: { type: "string" },
-          },
-        ],
-        responses: {
-          200: {
-            description: "Task marked as in progress successfully",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/TaskResponse" },
-              },
-            },
-          },
-          409: {
-            description: "Illegal task transition",
-          },
-        },
-      },
-    },
-    "/api/v1/tasks/{taskId}/complete": {
-      patch: {
-        tags: ["Tasks"],
-        summary: "Complete an in-progress task",
-        security: [{ bearerAuth: [] }],
-        parameters: [
-          {
-            in: "path",
-            name: "taskId",
-            required: true,
-            schema: { type: "string" },
-          },
-        ],
-        responses: {
-          200: {
-            description: "Task completed successfully",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/TaskResponse" },
-              },
-            },
-          },
-          409: {
-            description: "Illegal task transition",
-          },
-        },
-      },
-    },
-    "/api/v1/tasks/{taskId}/cancel": {
-      patch: {
-        tags: ["Tasks"],
-        summary: "Cancel a task",
         security: [{ bearerAuth: [] }],
         parameters: [
           {
             in: "path",
             name: "transactionId",
-            name: "taskId",
             required: true,
             schema: { type: "string" },
           },
@@ -841,39 +877,141 @@ const swaggerDocument = {
           required: true,
           content: {
             "application/json": {
-              schema: {
-                $ref: "#/components/schemas/UpdateWalletTransactionStatusRequest",
-              },
-          required: false,
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/CancelTaskRequest" },
+              schema: { $ref: "#/components/schemas/UpdateWalletTransactionStatusRequest" },
             },
           },
         },
         responses: {
           200: {
             description: "Wallet transaction status updated successfully",
+          },
+        },
+      },
+    },
+    "/api/v1/admin/users/{userId}/suspend": {
+      patch: {
+        tags: ["Admin"],
+        summary: "Suspend a user account",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "userId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/SuspendUserRequest" },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "User suspended successfully",
+          },
+        },
+      },
+    },
+    "/api/v1/admin/tasks/{taskId}/archive": {
+      patch: {
+        tags: ["Admin"],
+        summary: "Archive a task",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "taskId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ArchiveTaskRequest" },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Task archived successfully",
+          },
+        },
+      },
+    },
+    "/api/v1/admin/reports": {
+      get: {
+        tags: ["Admin"],
+        summary: "List reported issues",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "query",
+            name: "status",
+            schema: { type: "string", enum: ["open", "reviewed", "resolved", "dismissed"] },
+          },
+          {
+            in: "query",
+            name: "entityType",
+            schema: { type: "string", enum: ["user", "task"] },
+          },
+          {
+            in: "query",
+            name: "page",
+            schema: { type: "integer", example: 1 },
+          },
+          {
+            in: "query",
+            name: "limit",
+            schema: { type: "integer", example: 20 },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Reported issues fetched successfully",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/WalletTransactionResponse" },
+                schema: { $ref: "#/components/schemas/ReportListResponse" },
               },
             },
           },
-          409: {
-            description: "Illegal status transition",
-            description: "Task cancelled successfully",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/TaskResponse" },
-              },
+        },
+      },
+    },
+    "/api/v1/admin/reports/{reportId}/status": {
+      patch: {
+        tags: ["Admin"],
+        summary: "Update report moderation status",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "reportId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/UpdateReportStatusRequest" },
             },
           },
-          403: {
-            description: "Requester/admin only route",
-          },
-          409: {
-            description: "Illegal task transition",
+        },
+        responses: {
+          200: {
+            description: "Report status updated successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ReportResponse" },
+              },
+            },
           },
         },
       },

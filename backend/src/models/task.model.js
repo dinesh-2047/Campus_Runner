@@ -74,6 +74,25 @@ const taskSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    isArchived: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    archivedAt: {
+      type: Date,
+      default: null,
+    },
+    archiveReason: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    archivedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -81,6 +100,7 @@ const taskSchema = new mongoose.Schema(
 );
 
 taskSchema.index({ status: 1, createdAt: -1 });
+taskSchema.index({ isArchived: 1, status: 1, createdAt: -1 });
 taskSchema.index({ requestedBy: 1, createdAt: -1 });
 taskSchema.index({ assignedRunner: 1, createdAt: -1 });
 
