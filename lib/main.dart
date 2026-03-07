@@ -8,6 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'core/config/app_mode.dart';
 import 'presentation/screens/splash_screen.dart';
+import 'core/themes/theme_provider.dart';
+import 'presentation/screens/home/runner_home_screen.dart';
 
 FirebaseOptions? _firebaseOptionsFromEnv() {
   const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
@@ -75,11 +77,13 @@ void main() async {
   runApp(const ProviderScope(child: CampusRunnerApp()));
 }
 
-class CampusRunnerApp extends StatelessWidget {
+class CampusRunnerApp extends ConsumerWidget {
   const CampusRunnerApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Campus Runner',
@@ -95,7 +99,7 @@ class CampusRunnerApp extends StatelessWidget {
         textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
         useMaterial3: true,
       ),
-      themeMode: ThemeMode.system, // Auto-switch based on phone settings
+      themeMode: themeMode,
       // --- HOME SCREEN ---
       // Guest browsing by default.
       home: const SplashScreen(),

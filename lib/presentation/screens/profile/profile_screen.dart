@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../../../core/config/app_mode.dart';
 import '../../../logic/auth_provider.dart';
 import '../../../logic/user_provider.dart';
@@ -11,6 +13,7 @@ import '../auth/login_screen.dart';
 import '../../widgets/loaders/aurora_loader.dart';
 import 'edit_profile_screen.dart';
 import '../auth/phone_verification_screen.dart';
+import 'wallet_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -116,13 +119,16 @@ class ProfileScreen extends ConsumerWidget {
                             radius: 34,
                             backgroundColor: colors.primaryContainer,
                             backgroundImage: userProfile?.photoUrl != null
-                                ? NetworkImage(userProfile!.photoUrl!)
+                                ? CachedNetworkImageProvider(userProfile!.photoUrl!)
                                 : (user?.photoURL != null
                                       ? NetworkImage(user!.photoURL!)
                                       : null),
                             child:
                                 userProfile?.photoUrl == null &&
                                     user?.photoURL == null
+                                    ? CachedNetworkImageProvider(user!.photoURL!)
+                                    : null),
+                            child: userProfile?.photoUrl == null && user?.photoURL == null
                                 ? Text(
                                     initials.isEmpty ? 'CR' : initials,
                                     style: theme.textTheme.titleLarge?.copyWith(
@@ -221,7 +227,6 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-
                         Expanded(
                           child: _StatCard(
                             icon: PhosphorIcons.personSimpleRun(),
@@ -230,7 +235,6 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-
                         Expanded(
                           child: _StatCard(
                             icon: PhosphorIcons.star(),
@@ -239,7 +243,6 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-
                         Expanded(
                           child: _StatCard(
                             icon: PhosphorIcons.users(),
@@ -294,6 +297,20 @@ class ProfileScreen extends ConsumerWidget {
                         },
                       ),
                     if (userProfile != null) const SizedBox(height: 10),
+                    _ActionTile(
+                      icon: PhosphorIcons.wallet(),
+                      title: 'Wallet',
+                      subtitle: 'Check balance and recent transactions',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const WalletScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
                     _ActionTile(
                       icon: PhosphorIcons.mapTrifold(),
                       title: 'Saved routes',
