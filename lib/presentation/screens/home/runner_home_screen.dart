@@ -12,6 +12,7 @@ import '../../../logic/task_provider.dart';
 import '../../../logic/campus_provider.dart';
 import '../../../logic/location_provider.dart';
 import '../../../logic/user_provider.dart';
+import '../../../core/themes/theme_provider.dart';
 import '../../../core/utils/formatters.dart';
 import '../auth/login_screen.dart';
 import '../../widgets/cards/task_card.dart';
@@ -31,6 +32,7 @@ class RunnerHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
+  String sortType = "latest";
   bool _isLoggedIn() {
     if (!AppMode.backendEnabled) return true;
     return ref.read(authRepositoryProvider).getCurrentUser() != null;
@@ -47,7 +49,6 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
-
     return result == true;
   }
 
@@ -75,6 +76,8 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
     final tasksAsync = ref.watch(tasksStreamProvider);
     final campusesAsync = ref.watch(campusesStreamProvider);
     final selectedCampusId = ref.watch(selectedCampusProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -93,6 +96,14 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
             icon: const Icon(Icons.alt_route),
           ),
           IconButton(
+            onPressed: () {
+              ref.read(themeModeProvider.notifier).toggleTheme();
+            },
+            tooltip: isDarkMode
+                ? 'Switch to light mode'
+                : 'Switch to dark mode',
+            icon: Icon(isDarkMode ? PhosphorIcons.sun() : PhosphorIcons.moon()),
+          ),
           onPressed: () {
             Navigator.push(
               context,
@@ -175,12 +186,12 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const LeaderboardScreen(),
+                  builder: (context) => const TaskHistoryScreen(),
                 ),
               );
             },
-            child: const Text("View Leaderboard"),
-          )
+            child: const Text("View Task History"),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: campusesAsync.when(
@@ -215,8 +226,34 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
               error: (error, _) => Text('Error: $error'),
             ),
           ),
-          Expanded(
-            child: tasksAsync.when(
+          // FILTER + SORT BUTTONS
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.filter_list),
+                  label: const Text("Filter"),
+                ),
+                ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    sortType = sortType == "highest_price"
+                        ? "latest"
+                        : "highest_price";
+                  });
+                },
+                icon: const Icon(Icons.sort),
+                label: const Text("Sort"),
+              ),
+              ],
+            ),
+          ),
+
+            Expanded(
+              child: tasksAsync.when(
               // A. LOADING STATE
               loading: () => Skeletonizer(
                 enabled: true,
@@ -242,7 +279,14 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
 
               // C. DATA STATE
               data: (tasks) {
-                if (tasks.isEmpty) {
+                final sortedTasks = [...tasks];
+                if (sortType == "highest_price") {
+                sortedTasks.sort((a, b) => b.price.compareTo(a.price));
+              } else if (sortType == "latest") {
+                sortedTasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+              }
+
+             if (sortedTasks.isEmpty){
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -265,9 +309,9 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
                 // Show the list of tasks
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: tasks.length,
+                  itemCount: sortedTasks.length,
                   itemBuilder: (context, index) {
-                    final task = tasks[index];
+                    final task = sortedTasks[index];
 
                     // We use a Column to stack the card and the action button
                     return Column(
@@ -325,41 +369,61 @@ class _RunnerHomeScreenState extends ConsumerState<RunnerHomeScreen> {
                                       }
 
                                       try {
-                                        final currentUser = ref.read(authRepositoryProvider).getCurrentUser();
+                                        final currentUser = ref
+                                            .read(authRepositoryProvider)
+                                            .getCurrentUser();
                                         if (currentUser == null) {
-                                          throw Exception('User not authenticated');
+                                          throw Exception(
+                                            'User not authenticated',
+                                          );
                                         }
 
-                                        final userProfile = await ref.read(userRepositoryProvider).getUserProfile(currentUser.uid);
+                                        final userProfile = await ref
+                                            .read(userRepositoryProvider)
+                                            .getUserProfile(currentUser.uid);
                                         if (userProfile == null) {
-                                          throw Exception('User profile not found');
+                                          throw Exception(
+                                            'User profile not found',
+                                          );
                                         }
 
-                                        final locationService = ref.read(locationServiceProvider);
-                                        final hasPermission = await locationService.requestLocationPermission();
-                                        
+                                        final locationService = ref.read(
+                                          locationServiceProvider,
+                                        );
+                                        final hasPermission =
+                                            await locationService
+                                                .requestLocationPermission();
+
                                         if (!hasPermission) {
                                           if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
                                               const SnackBar(
-                                                content: Text('Location permission required for tracking'),
+                                                content: Text(
+                                                  'Location permission required for tracking',
+                                                ),
                                                 backgroundColor: Colors.red,
                                               ),
                                             );
                                           }
                                           return;
                                         }
-                                        
+
                                         await ref
                                             .read(taskRepositoryProvider)
                                             .acceptTask(
                                               taskId: task.id,
                                               runnerId: currentUser.uid,
-                                              runnerName: userProfile.displayName,
-                                              runnerPhone: userProfile.phoneNumber,
+                                              runnerName:
+                                                  userProfile.displayName,
+                                              runnerPhone:
+                                                  userProfile.phoneNumber,
                                             );
 
-                                        locationService.startLocationTracking(task.id);
+                                        locationService.startLocationTracking(
+                                          task.id,
+                                        );
 
                                         if (context.mounted) {
                                           ScaffoldMessenger.of(
