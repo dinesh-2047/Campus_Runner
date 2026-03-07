@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'core/config/app_mode.dart';
 import 'presentation/screens/home/runner_home_screen.dart';
+import 'data/services/notification_service.dart';
 
 FirebaseOptions? _firebaseOptionsFromEnv() {
   const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
@@ -45,6 +46,7 @@ bool _needsExplicitOptions() {
 void main() async {
   // 1. Initialize Flutter Bindings
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().initialize();
 
   // 2. Initialize Firebase only when backend mode is enabled.
   if (AppMode.backendEnabled) {

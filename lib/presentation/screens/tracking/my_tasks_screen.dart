@@ -6,6 +6,7 @@ import '../../../data/models/task_model.dart';
 import '../../../logic/auth_provider.dart';
 import '../../../core/utils/formatters.dart';
 import 'live_tracking_screen.dart';
+import '../../../data/services/notification_service.dart';
 
 class MyTasksScreen extends ConsumerWidget {
   const MyTasksScreen({super.key});
@@ -76,8 +77,30 @@ class MyTasksScreen extends ConsumerWidget {
               ),
             );
           }
+                    
+          final docs = snapshot.data!.docs;
 
-          final tasks = snapshot.data!.docs
+          for (var task in docs) {
+            final status = task['status'];
+
+            if (status == 'accepted') {
+              print("Task accepted by runner");
+            }
+
+            if (status == 'picked_up') {
+              print("Task picked up");
+            }
+
+            if (status == 'delivered') {
+              print("Task delivered");
+            }
+
+            if (status == 'cancelled') {
+              print("Task cancelled");
+            }
+          }
+
+          final tasks = docs
               .map((doc) => TaskModel.fromMap(
                     doc.data() as Map<String, dynamic>,
                     doc.id,
