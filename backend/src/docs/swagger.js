@@ -403,6 +403,47 @@ const swaggerDocument = {
           reward: { type: "number", example: 80 },
         },
       },
+      RunnerPerformanceMetrics: {
+        type: "object",
+        properties: {
+          acceptedTaskCount: { type: "integer", example: 12 },
+          activeTaskCount: { type: "integer", example: 2 },
+          completedTaskCount: { type: "integer", example: 8 },
+          cancelledTaskCount: { type: "integer", example: 2 },
+          acceptanceRate: {
+            type: "number",
+            format: "float",
+            example: 83.33,
+            description:
+              "Percentage of accepted assignments that remained active or completed instead of ending in cancellation.",
+          },
+          completionRate: { type: "number", format: "float", example: 66.67 },
+          cancellationRate: { type: "number", format: "float", example: 16.67 },
+          averageCompletionTimeMinutes: { type: "number", format: "float", example: 24.5 },
+          totalEarnings: { type: "number", example: 1280 },
+        },
+      },
+      RunnerPerformance: {
+        type: "object",
+        properties: {
+          runner: {
+            type: "object",
+            properties: {
+              id: { type: "string", example: "67ca72d999ea40f2abc12345" },
+              fullName: { type: "string", example: "Runner One" },
+              email: { type: "string", format: "email", example: "runner@example.com" },
+              phoneNumber: { type: "string", example: "+91-9876543210" },
+              campusId: { type: "string", example: "vit-bhopal" },
+              campusName: { type: "string", example: "VIT Bhopal" },
+              isVerified: { type: "boolean", example: true },
+              isActive: { type: "boolean", example: true },
+              createdAt: { type: "string", format: "date-time" },
+              updatedAt: { type: "string", format: "date-time" },
+            },
+          },
+          metrics: { $ref: "#/components/schemas/RunnerPerformanceMetrics" },
+        },
+      },
       TaskFeedResponse: apiResponse(
         {
           type: "object",
@@ -690,6 +731,7 @@ const swaggerDocument = {
         },
         "Reported issues fetched successfully",
       ),
+      RunnerPerformanceListResponse: apiResponse(
       AdminAnalyticsDashboardResponse: apiResponse(
         {
           type: "object",
@@ -795,6 +837,7 @@ const swaggerDocument = {
           properties: {
             items: {
               type: "array",
+              items: { $ref: "#/components/schemas/RunnerPerformance" },
               items: { $ref: "#/components/schemas/Dispute" },
             },
             pagination: {
@@ -802,6 +845,7 @@ const swaggerDocument = {
               properties: {
                 page: { type: "integer", example: 1 },
                 limit: { type: "integer", example: 20 },
+                total: { type: "integer", example: 12 },
                 total: { type: "integer", example: 2 },
                 totalPages: { type: "integer", example: 1 },
               },
@@ -809,6 +853,42 @@ const swaggerDocument = {
             filters: {
               type: "object",
               properties: {
+                search: { type: "string", example: "runner" },
+                active: { type: "string", example: "true" },
+                verified: { type: "string", example: "true" },
+                campusId: { type: "string", example: "vit-bhopal" },
+                sortBy: { type: "string", example: "totalEarnings" },
+                order: { type: "string", example: "desc" },
+              },
+            },
+          },
+        },
+        "Runner performance metrics fetched successfully",
+      ),
+      RunnerPerformanceResponse: apiResponse(
+        {
+          type: "object",
+          properties: {
+            runner: {
+              type: "object",
+              properties: {
+                id: { type: "string", example: "67ca72d999ea40f2abc12345" },
+                fullName: { type: "string", example: "Runner One" },
+                email: { type: "string", format: "email", example: "runner@example.com" },
+                phoneNumber: { type: "string", example: "+91-9876543210" },
+                campusId: { type: "string", example: "vit-bhopal" },
+                campusName: { type: "string", example: "VIT Bhopal" },
+                role: { type: "string", example: "runner" },
+                isVerified: { type: "boolean", example: true },
+                isActive: { type: "boolean", example: true },
+                createdAt: { type: "string", format: "date-time" },
+                updatedAt: { type: "string", format: "date-time" },
+              },
+            },
+            metrics: { $ref: "#/components/schemas/RunnerPerformanceMetrics" },
+          },
+        },
+        "Runner performance metrics fetched successfully",
                 status: { type: "string", example: "open" },
                 openedByRole: { type: "string", example: "runner" },
                 taskId: { type: "string", example: "67ca72d999ea40f2abc98765" },
@@ -1890,6 +1970,109 @@ const swaggerDocument = {
         responses: {
           200: {
             description: "Task archived successfully",
+          },
+        },
+      },
+    },
+    "/api/v1/admin/runners/performance": {
+      get: {
+        tags: ["Admin"],
+        summary: "List runner performance metrics",
+        description:
+          "Admin-only route that returns backend-calculated runner metrics derived from task outcomes and completed wallet credits.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "query",
+            name: "search",
+            schema: { type: "string" },
+          },
+          {
+            in: "query",
+            name: "active",
+            schema: { type: "boolean" },
+          },
+          {
+            in: "query",
+            name: "verified",
+            schema: { type: "boolean" },
+          },
+          {
+            in: "query",
+            name: "campusId",
+            schema: { type: "string" },
+          },
+          {
+            in: "query",
+            name: "page",
+            schema: { type: "integer", example: 1 },
+          },
+          {
+            in: "query",
+            name: "limit",
+            schema: { type: "integer", example: 20 },
+          },
+          {
+            in: "query",
+            name: "sortBy",
+            schema: {
+              type: "string",
+              enum: [
+                "fullName",
+                "acceptedTaskCount",
+                "activeTaskCount",
+                "completedTaskCount",
+                "cancelledTaskCount",
+                "acceptanceRate",
+                "completionRate",
+                "cancellationRate",
+                "averageCompletionTimeMinutes",
+                "totalEarnings",
+              ],
+            },
+          },
+          {
+            in: "query",
+            name: "order",
+            schema: { type: "string", enum: ["asc", "desc"] },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Runner performance metrics fetched successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/RunnerPerformanceListResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/v1/admin/runners/{runnerId}/performance": {
+      get: {
+        tags: ["Admin"],
+        summary: "Get runner performance metrics by id",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "path",
+            name: "runnerId",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Runner performance metrics fetched successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/RunnerPerformanceResponse" },
+              },
+            },
+          },
+          404: {
+            description: "Runner not found",
           },
         },
       },
