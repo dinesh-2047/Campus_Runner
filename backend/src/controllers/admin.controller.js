@@ -9,6 +9,8 @@ import {
 import { Report, allowedReportEntityTypes, allowedReportStatuses } from "../models/report.model.js";
 import { Task } from "../models/task.model.js";
 import { User } from "../models/user.model.js";
+import { sanitizeUser as sanitizeProfileUser } from "./profile.controller.js";
+import { validateCampusScopesInput } from "../utils/campusScope.js";
 import {
   buildRunnerMetricsMap,
   buildRunnerPerformanceEntry,
@@ -767,6 +769,16 @@ const updateReportStatus = asyncHandler(async (req, res) => {
   );
 });
 
+const getUserCampusScopes = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  ensureValidObjectId(userId, "user id");
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
 const listFraudFlags = asyncHandler(async (req, res) => {
   const { status, severity, flagType, page = 1, limit = 20 } = req.query;
 
@@ -811,6 +823,45 @@ const listFraudFlags = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {
+        user: sanitizeProfileUser(user),
+        campusScopes: user.campusScopes || [],
+      },
+      "User campus scopes fetched successfully",
+    ),
+  );
+});
+
+const updateUserCampusScopes = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { campusScopes } = req.body;
+
+  ensureValidObjectId(userId, "user id");
+
+  const sanitizedScopes = validateCampusScopesInput(campusScopes);
+  const user = await User.findByIdAndUpdate(
+    userId,
+    {
+      campusScopes: sanitizedScopes,
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        user: sanitizeProfileUser(user),
+        campusScopes: user.campusScopes || [],
+      },
+      "User campus scopes updated successfully",
+    ),
         items: flags.map(sanitizeFraudFlag),
         pagination: {
           page: resolvedPage,
@@ -859,6 +910,11 @@ const updateFraudFlagStatus = asyncHandler(async (req, res) => {
 
 export {
   archiveTask,
+  getUserCampusScopes,
+  listReportedIssues,
+  suspendUser,
+  updateReportStatus,
+  updateUserCampusScopes,
   listFraudFlags,
   listReportedIssues,
   suspendUser,

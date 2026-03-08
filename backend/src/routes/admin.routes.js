@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import {
   archiveTask,
+  getUserCampusScopes,
   listFraudFlags,
   getRunnerPerformanceById,
   getRunnerPerformanceMetrics,
@@ -10,6 +11,7 @@ import {
   suspendUser,
   updateFraudFlagStatus,
   updateReportStatus,
+  updateUserCampusScopes,
 } from "../controllers/admin.controller.js";
 import { authorizeRoles, verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -17,6 +19,8 @@ const router = Router();
 
 router.use(verifyJWT, authorizeRoles("admin"));
 
+router.get("/users/:userId/campus-scopes", getUserCampusScopes);
+router.put("/users/:userId/campus-scopes", updateUserCampusScopes);
 router.get("/runners/performance", getRunnerPerformanceMetrics);
 router.get("/runners/:runnerId/performance", getRunnerPerformanceById);
 router.get("/analytics/dashboard", getAdminAnalyticsDashboard);
