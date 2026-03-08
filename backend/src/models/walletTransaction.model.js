@@ -2,7 +2,11 @@ import mongoose from "mongoose";
 
 const allowedWalletTransactionTypes = ["credit", "debit"];
 const allowedWalletTransactionStatuses = ["pending", "completed", "failed"];
-const allowedWalletTransactionCategories = ["manual", "withdrawal_request"];
+const allowedWalletTransactionCategories = [
+  "manual",
+  "withdrawal_request",
+  "runner_incentive",
+];
 
 const walletTransactionSchema = new mongoose.Schema(
   {
@@ -44,6 +48,45 @@ const walletTransactionSchema = new mongoose.Schema(
       ref: "Task",
       default: null,
     },
+    incentiveRule: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RunnerIncentiveRule",
+      default: null,
+    },
+    incentiveWindowStart: {
+      type: Date,
+      default: null,
+    },
+    incentiveWindowEnd: {
+      type: Date,
+      default: null,
+    },
+    incentiveMetrics: {
+      completedTaskCount: {
+        type: Number,
+        default: 0,
+      },
+      cancelledTaskCount: {
+        type: Number,
+        default: 0,
+      },
+      totalResolvedTaskCount: {
+        type: Number,
+        default: 0,
+      },
+      completionRate: {
+        type: Number,
+        default: 0,
+      },
+      highDemandZoneTaskCount: {
+        type: Number,
+        default: 0,
+      },
+      campusZones: {
+        type: [String],
+        default: [],
+      },
+    },
     failureReason: {
       type: String,
       trim: true,
@@ -83,6 +126,7 @@ const walletTransactionSchema = new mongoose.Schema(
 walletTransactionSchema.index({ user: 1, createdAt: -1 });
 walletTransactionSchema.index({ user: 1, status: 1, createdAt: -1 });
 walletTransactionSchema.index({ category: 1, status: 1, createdAt: -1 });
+walletTransactionSchema.index({ incentiveRule: 1, incentiveWindowStart: -1, createdAt: -1 });
 walletTransactionSchema.index(
   { sourceTask: 1, type: 1 },
   {
@@ -90,6 +134,18 @@ walletTransactionSchema.index(
     partialFilterExpression: {
       sourceTask: { $type: "objectId" },
       type: "credit",
+    },
+  },
+);
+walletTransactionSchema.index(
+  { user: 1, category: 1, incentiveRule: 1, incentiveWindowStart: 1, incentiveWindowEnd: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      category: "runner_incentive",
+      incentiveRule: { $type: "objectId" },
+      incentiveWindowStart: { $type: "date" },
+      incentiveWindowEnd: { $type: "date" },
     },
   },
 );

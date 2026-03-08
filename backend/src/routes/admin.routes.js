@@ -2,13 +2,17 @@ import { Router } from "express";
 
 import {
   archiveTask,
+  createRunnerIncentiveRule,
+  evaluateRunnerIncentiveRules,
   getUserCampusScopes,
   listFraudFlags,
+  listRunnerIncentiveRules,
   getRunnerPerformanceById,
   getRunnerPerformanceMetrics,
   getAdminAnalyticsDashboard,
   listReportedIssues,
   suspendUser,
+  updateRunnerIncentiveRule,
   updateFraudFlagStatus,
   updateReportStatus,
   updateUserCampusScopes,
@@ -28,6 +32,22 @@ router.put(
 );
 router.get("/runners/performance", getRunnerPerformanceMetrics);
 router.get("/runners/:runnerId/performance", getRunnerPerformanceById);
+router.get("/runner-incentives/rules", listRunnerIncentiveRules);
+router.post(
+  "/runner-incentives/rules",
+  createIdempotencyMiddleware(),
+  createRunnerIncentiveRule,
+);
+router.patch(
+  "/runner-incentives/rules/:ruleId",
+  createIdempotencyMiddleware(),
+  updateRunnerIncentiveRule,
+);
+router.post(
+  "/runner-incentives/evaluate",
+  createIdempotencyMiddleware(),
+  evaluateRunnerIncentiveRules,
+);
 router.get("/analytics/dashboard", getAdminAnalyticsDashboard);
 router.patch("/users/:userId/suspend", createIdempotencyMiddleware(), suspendUser);
 router.patch("/tasks/:taskId/archive", createIdempotencyMiddleware(), archiveTask);

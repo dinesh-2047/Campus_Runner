@@ -65,6 +65,7 @@ const sanitizeTask = (task) => ({
   pickupLocation: task.pickupLocation,
   dropoffLocation: task.dropoffLocation,
   campus: task.campus,
+  campusZone: task.campusZone,
   transportMode: task.transportMode,
   reward: task.reward,
   status: task.status,
@@ -234,6 +235,7 @@ const resolveTaskFeedQuery = (query, overrides = {}) => {
         { pickupLocation: pattern },
         { dropoffLocation: pattern },
         { campus: pattern },
+        { campusZone: pattern },
       ],
     });
   }
@@ -407,6 +409,7 @@ const createTask = asyncHandler(async (req, res) => {
     pickupLocation,
     dropoffLocation,
     campus,
+    campusZone,
     transportMode,
     reward,
   } = req.body;
@@ -438,6 +441,7 @@ const createTask = asyncHandler(async (req, res) => {
     pickupLocation: pickupLocation.trim(),
     dropoffLocation: dropoffLocation.trim(),
     campus: normalizedCampus,
+    campusZone: campusZone?.trim() || "",
     transportMode: transportMode || "other",
     reward: normalizedReward,
     requestedBy: req.user._id,
