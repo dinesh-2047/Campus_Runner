@@ -14,6 +14,10 @@ import {
   updateUserCampusScopes,
 } from "../controllers/admin.controller.js";
 import { authorizeRoles, verifyJWT } from "../middlewares/auth.middleware.js";
+import {
+  createRateLimitMiddleware,
+  rateLimitPolicies,
+} from "../middlewares/rateLimit.middleware.js";
 import { createIdempotencyMiddleware } from "../middlewares/idempotency.middleware.js";
 
 const router = Router();
@@ -23,12 +27,27 @@ router.use(verifyJWT, authorizeRoles("admin"));
 router.get("/users/:userId/campus-scopes", getUserCampusScopes);
 router.put(
   "/users/:userId/campus-scopes",
+  createRateLimitMiddleware(rateLimitPolicies.adminSensitive),
   createIdempotencyMiddleware(),
   updateUserCampusScopes,
 );
 router.get("/runners/performance", getRunnerPerformanceMetrics);
 router.get("/runners/:runnerId/performance", getRunnerPerformanceById);
 router.get("/analytics/dashboard", getAdminAnalyticsDashboard);
+router.patch(
+  "/users/:userId/suspend",
+  createRateLimitMiddleware(rateLimitPolicies.adminSensitive),
+  suspendUser,
+);
+router.patch(
+  "/tasks/:taskId/archive",
+  createRateLimitMiddleware(rateLimitPolicies.adminSensitive),
+  archiveTask,
+);
+router.get("/fraud-flags", listFraudFlags);
+router.patch(
+  "/fraud-flags/:flagId/status",
+  createRateLimitMiddleware(rateLimitPolicies.adminSensitive),
 router.patch("/users/:userId/suspend", createIdempotencyMiddleware(), suspendUser);
 router.patch("/tasks/:taskId/archive", createIdempotencyMiddleware(), archiveTask);
 router.get("/fraud-flags", listFraudFlags);
@@ -40,6 +59,7 @@ router.patch(
 router.get("/reports", listReportedIssues);
 router.patch(
   "/reports/:reportId/status",
+  createRateLimitMiddleware(rateLimitPolicies.adminSensitive),
   createIdempotencyMiddleware(),
   updateReportStatus,
 );
