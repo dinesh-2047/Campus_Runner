@@ -13,6 +13,7 @@ import {
   updateReportStatus,
   updateUserCampusScopes,
 } from "../controllers/admin.controller.js";
+import { createPromotion, listPromotions, updatePromotion } from "../controllers/promotion.controller.js";
 import { authorizeRoles, verifyJWT } from "../middlewares/auth.middleware.js";
 import { createIdempotencyMiddleware } from "../middlewares/idempotency.middleware.js";
 
@@ -26,6 +27,9 @@ router.put(
   createIdempotencyMiddleware(),
   updateUserCampusScopes,
 );
+router.get("/promotions", listPromotions);
+router.post("/promotions", createIdempotencyMiddleware(), createPromotion);
+router.patch("/promotions/:promotionId", createIdempotencyMiddleware(), updatePromotion);
 router.get("/runners/performance", getRunnerPerformanceMetrics);
 router.get("/runners/:runnerId/performance", getRunnerPerformanceById);
 router.get("/analytics/dashboard", getAdminAnalyticsDashboard);

@@ -8,6 +8,7 @@ import {
 } from "../models/task.model.js";
 import { ensureUserHasCampusAccess } from "../utils/campusScope.js";
 import { evaluateTaskForFraudFlags } from "../services/fraudDetection.service.js";
+import { validateTaskPromotion, recordTaskPromotionRedemption } from "../services/promotion.service.js";
 import { settleRunnerEarningsForTask } from "../services/taskSettlement.service.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -67,6 +68,7 @@ const sanitizeTask = (task) => ({
   campus: task.campus,
   transportMode: task.transportMode,
   reward: task.reward,
+  promotionSnapshot: task.promotionSnapshot,
   status: task.status,
   requestedBy: sanitizeTaskUser(task.requestedBy),
   assignedRunner: sanitizeTaskUser(task.assignedRunner),
@@ -400,6 +402,53 @@ const ensureTaskRequesterOrAdmin = (task, user) => {
   }
 };
 
+const previewTaskQuote = asyncHandler(async (req, res) => {
+  const { campus, reward, promoCode } = req.body;
+
+  if (!campus) {
+    throw new ApiError(400, "campus is required");
+  }
+
+  const normalizedReward = Number(reward);
+  if (Number.isNaN(normalizedReward) || normalizedReward < 0) {
+    throw new ApiError(400, "reward must be a non-negative number");
+  }
+
+  const normalizedCampus =
+    req.user.role === "admin"
+      ? campus.trim()
+      : ensureUserHasCampusAccess(req.user, campus, "preview quote");
+
+  const promotionValidation = await validateTaskPromotion({
+    code: promoCode,
+    userId: req.user._id,
+    campus: normalizedCampus,
+    reward: normalizedReward,
+  });
+
+  const finalReward = promotionValidation ? promotionValidation.finalReward : normalizedReward;
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        campus: normalizedCampus,
+        subtotal: normalizedReward,
+        promotion: promotionValidation
+          ? {
+              code: promotionValidation.promotion.code,
+              discountAmount: promotionValidation.discountAmount,
+              finalReward: promotionValidation.finalReward,
+              snapshot: promotionValidation.snapshot,
+            }
+          : null,
+        total: finalReward,
+      },
+      "Task quote preview fetched successfully",
+    ),
+  );
+});
+
 const createTask = asyncHandler(async (req, res) => {
   const {
     title,
@@ -408,6 +457,7 @@ const createTask = asyncHandler(async (req, res) => {
     dropoffLocation,
     campus,
     transportMode,
+    promoCode,
     reward,
   } = req.body;
 
@@ -432,6 +482,13 @@ const createTask = asyncHandler(async (req, res) => {
       ? campus.trim()
       : ensureUserHasCampusAccess(req.user, campus, "create");
 
+  const promotionValidation = await validateTaskPromotion({
+    code: promoCode,
+    userId: req.user._id,
+    campus: normalizedCampus,
+    reward: normalizedReward,
+  });
+
   const task = await Task.create({
     title: title.trim(),
     description: description.trim(),
@@ -439,9 +496,18 @@ const createTask = asyncHandler(async (req, res) => {
     dropoffLocation: dropoffLocation.trim(),
     campus: normalizedCampus,
     transportMode: transportMode || "other",
-    reward: normalizedReward,
+    reward: promotionValidation ? promotionValidation.finalReward : normalizedReward,
+    promotionSnapshot: promotionValidation ? promotionValidation.snapshot : null,
     requestedBy: req.user._id,
   });
+
+  if (promotionValidation) {
+    await recordTaskPromotionRedemption({
+      promotionValidation,
+      userId: req.user._id,
+      taskId: task._id,
+    });
+  }
 
   const createdTask = await Task.findById(task._id).populate(detailedTaskPopulateFields);
 
@@ -717,4 +783,5 @@ export {
   listOpenTasks,
   listProtectedTaskActions,
   markTaskInProgress,
+  previewTaskQuote,
 };
