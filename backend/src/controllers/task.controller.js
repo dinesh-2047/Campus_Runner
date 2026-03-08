@@ -6,6 +6,10 @@ import {
   allowedTransportModes,
   Task,
 } from "../models/task.model.js";
+import {
+  normalizeAttachmentMetadata,
+  sanitizeAttachmentMetadata,
+} from "../utils/attachmentMetadata.js";
 import { ensureUserHasCampusAccess } from "../utils/campusScope.js";
 import { evaluateTaskForFraudFlags } from "../services/fraudDetection.service.js";
 import { settleRunnerEarningsForTask } from "../services/taskSettlement.service.js";
@@ -30,6 +34,10 @@ const populateTaskFields = [
   },
   {
     path: "assignedRunner",
+    select: baseTaskUserSelection,
+  },
+  {
+    path: "attachments.uploadedBy",
     select: baseTaskUserSelection,
   },
 ];
@@ -89,6 +97,9 @@ const sanitizeTask = (task) => ({
   archivedAt: task.archivedAt,
   archiveReason: task.archiveReason,
   archivedBy: sanitizeTaskUser(task.archivedBy),
+  attachments: (task.attachments || []).map((attachment) =>
+    sanitizeAttachmentMetadata(attachment, sanitizeTaskUser),
+  ),
   createdAt: task.createdAt,
   updatedAt: task.updatedAt,
 });
@@ -400,6 +411,97 @@ const ensureTaskRequesterOrAdmin = (task, user) => {
   }
 };
 
+const ensureTaskParticipantOrAdmin = (task, user) => {
+  if (user.role === "admin") {
+    return;
+  }
+
+  const isRequester = task.requestedBy && String(task.requestedBy._id) === String(user._id);
+  const isAssignedRunner =
+    task.assignedRunner && String(task.assignedRunner._id) === String(user._id);
+
+  if (!isRequester && !isAssignedRunner) {
+    throw new ApiError(403, "Only task participants can manage task attachments");
+  }
+};
+
+const addTaskAttachment = asyncHandler(async (req, res) => {
+  const task = await fetchTaskOrThrow(req.params.taskId);
+  ensureTaskNotArchived(task);
+  ensureTaskParticipantOrAdmin(task, req.user);
+
+  const attachmentMetadata = normalizeAttachmentMetadata(req.body, {
+    defaultKind: "attachment",
+    allowedKinds: ["attachment", "proof_of_delivery"],
+  });
+
+  if (attachmentMetadata.kind === "proof_of_delivery") {
+    const isAssignedRunner =
+      req.user.role === "admin" ||
+      (task.assignedRunner && String(task.assignedRunner._id) === String(req.user._id));
+
+    if (!isAssignedRunner) {
+      throw new ApiError(403, "Only the assigned runner or an admin can add proof-of-delivery metadata");
+    }
+
+    if (!["in_progress", "completed"].includes(task.status)) {
+      throw new ApiError(409, "Proof-of-delivery metadata can be added only for in-progress or completed tasks");
+    }
+  }
+
+  task.attachments.push({
+    ...attachmentMetadata,
+    uploadedBy: req.user._id,
+    uploadedAt: new Date(),
+  });
+
+  await task.save();
+  await task.populate(detailedTaskPopulateFields);
+
+  const createdAttachment = task.attachments[task.attachments.length - 1];
+
+  res.status(201).json(
+    new ApiResponse(
+      201,
+      {
+        taskId: task._id,
+        attachment: sanitizeAttachmentMetadata(createdAttachment, sanitizeTaskUser),
+      },
+      "Task attachment metadata added successfully",
+    ),
+  );
+});
+
+const removeTaskAttachment = asyncHandler(async (req, res) => {
+  const task = await fetchTaskOrThrow(req.params.taskId);
+  ensureTaskNotArchived(task);
+
+  const attachment = task.attachments.id(req.params.attachmentId);
+  if (!attachment) {
+    throw new ApiError(404, "Task attachment not found");
+  }
+
+  const isAdmin = req.user.role === "admin";
+  const isUploader = String(attachment.uploadedBy?._id || attachment.uploadedBy) === String(req.user._id);
+
+  if (!isAdmin && !isUploader) {
+    throw new ApiError(403, "Only the uploader or an admin can remove this task attachment");
+  }
+
+  attachment.deleteOne();
+
+  await task.save();
+  await task.populate(detailedTaskPopulateFields);
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      { taskId: task._id, attachments: task.attachments.map((item) => sanitizeAttachmentMetadata(item, sanitizeTaskUser)) },
+      "Task attachment metadata removed successfully",
+    ),
+  );
+});
+
 const createTask = asyncHandler(async (req, res) => {
   const {
     title,
@@ -708,6 +810,7 @@ const listProtectedTaskActions = asyncHandler(async (req, res) => {
 
 export {
   acceptTask,
+  addTaskAttachment,
   cancelTask,
   completeTask,
   createTask,
@@ -717,4 +820,5 @@ export {
   listOpenTasks,
   listProtectedTaskActions,
   markTaskInProgress,
+  removeTaskAttachment,
 };

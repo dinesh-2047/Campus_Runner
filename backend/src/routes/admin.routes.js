@@ -13,6 +13,10 @@ import {
   updateReportStatus,
   updateUserCampusScopes,
 } from "../controllers/admin.controller.js";
+import {
+  addReportAttachment,
+  removeReportAttachment,
+} from "../controllers/reportAttachment.controller.js";
 import { authorizeRoles, verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
@@ -29,6 +33,8 @@ router.patch("/tasks/:taskId/archive", archiveTask);
 router.get("/fraud-flags", listFraudFlags);
 router.patch("/fraud-flags/:flagId/status", updateFraudFlagStatus);
 router.get("/reports", listReportedIssues);
+router.post("/reports/:reportId/attachments", addReportAttachment);
+router.delete("/reports/:reportId/attachments/:attachmentId", removeReportAttachment);
 router.patch("/reports/:reportId/status", updateReportStatus);
 
 export default router;
