@@ -3,6 +3,7 @@ import { Router } from "express";
 import {
   archiveTask,
   listFraudFlags,
+  getAdminAnalyticsDashboard,
   listReportedIssues,
   suspendUser,
   updateFraudFlagStatus,
@@ -14,6 +15,7 @@ const router = Router();
 
 router.use(verifyJWT, authorizeRoles("admin"));
 
+router.get("/analytics/dashboard", getAdminAnalyticsDashboard);
 router.patch("/users/:userId/suspend", suspendUser);
 router.patch("/tasks/:taskId/archive", archiveTask);
 router.get("/fraud-flags", listFraudFlags);
