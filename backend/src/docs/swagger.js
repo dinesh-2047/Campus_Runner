@@ -173,6 +173,54 @@ const walletBalanceSchema = {
   },
 };
 
+const fraudFlagSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string", example: "67ca72d999ea40f2abc00001" },
+    flagType: {
+      type: "string",
+      enum: [
+        "repeated_cancellations",
+        "wallet_abuse",
+        "self_dealing_pattern",
+        "unusually_fast_completion",
+      ],
+      example: "wallet_abuse",
+    },
+    severity: { type: "string", enum: ["low", "medium", "high"], example: "medium" },
+    status: {
+      type: "string",
+      enum: ["open", "reviewed", "resolved", "dismissed"],
+      example: "open",
+    },
+    title: { type: "string", example: "Repeated failed wallet debits detected" },
+    reason: {
+      type: "string",
+      example: "User accumulated 3 failed debit transactions within the last 7 days.",
+    },
+    occurrenceCount: { type: "integer", example: 2 },
+    metrics: { type: "object" },
+    lastDetectedAt: { type: "string", format: "date-time" },
+    user: { anyOf: [{ $ref: "#/components/schemas/User" }, { type: "null" }] },
+    secondaryUser: {
+      anyOf: [{ $ref: "#/components/schemas/User" }, { type: "null" }],
+    },
+    task: { anyOf: [{ $ref: "#/components/schemas/Task" }, { type: "null" }] },
+    walletTransaction: {
+      anyOf: [{ $ref: "#/components/schemas/WalletTransaction" }, { type: "null" }],
+    },
+    reviewedBy: {
+      anyOf: [{ $ref: "#/components/schemas/User" }, { type: "null" }],
+    },
+    reviewedAt: {
+      anyOf: [{ type: "string", format: "date-time" }, { type: "null" }],
+    },
+    resolutionNote: { type: "string", example: "Investigating requester behaviour" },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
+  },
+};
+
 const reportSchema = {
   type: "object",
   properties: {
@@ -292,6 +340,7 @@ const swaggerDocument = {
       Task: taskSchema,
       WalletTransaction: walletTransactionSchema,
       WalletBalance: walletBalanceSchema,
+      FraudFlag: fraudFlagSchema,
       Report: reportSchema,
       Dispute: disputeSchema,
       RegisterRequest: {
@@ -403,6 +452,19 @@ const swaggerDocument = {
           reward: { type: "number", example: 80 },
         },
       },
+      UpdateFraudFlagStatusRequest: {
+        type: "object",
+        required: ["status"],
+        properties: {
+          status: {
+            type: "string",
+            enum: ["open", "reviewed", "resolved", "dismissed"],
+            example: "reviewed",
+          },
+          resolutionNote: {
+            type: "string",
+            example: "Investigating requester behaviour",
+          },
       RunnerPerformanceMetrics: {
         type: "object",
         properties: {
@@ -734,6 +796,11 @@ const swaggerDocument = {
         },
         "Reported issues fetched successfully",
       ),
+      FraudFlagResponse: apiResponse(
+        { $ref: "#/components/schemas/FraudFlag" },
+        "Fraud flag status updated successfully",
+      ),
+      FraudFlagListResponse: apiResponse(
       RunnerPerformanceListResponse: apiResponse(
       AdminAnalyticsDashboardResponse: apiResponse(
         {
@@ -840,6 +907,7 @@ const swaggerDocument = {
           properties: {
             items: {
               type: "array",
+              items: { $ref: "#/components/schemas/FraudFlag" },
               items: { $ref: "#/components/schemas/RunnerPerformance" },
               items: { $ref: "#/components/schemas/Dispute" },
             },
@@ -848,6 +916,7 @@ const swaggerDocument = {
               properties: {
                 page: { type: "integer", example: 1 },
                 limit: { type: "integer", example: 20 },
+                total: { type: "integer", example: 4 },
                 total: { type: "integer", example: 12 },
                 total: { type: "integer", example: 2 },
                 totalPages: { type: "integer", example: 1 },
@@ -893,6 +962,13 @@ const swaggerDocument = {
         },
         "Runner performance metrics fetched successfully",
                 status: { type: "string", example: "open" },
+                severity: { type: "string", example: "medium" },
+                flagType: { type: "string", example: "wallet_abuse" },
+              },
+            },
+          },
+        },
+        "Fraud flags fetched successfully",
                 openedByRole: { type: "string", example: "runner" },
                 taskId: { type: "string", example: "67ca72d999ea40f2abc98765" },
               },
@@ -2057,6 +2133,12 @@ const swaggerDocument = {
         },
       },
     },
+    "/api/v1/admin/fraud-flags": {
+      get: {
+        tags: ["Admin"],
+        summary: "List fraud and anomaly detection flags",
+        description:
+          "Admin-only route that returns backend-generated suspicious activity flags for task cancellations, wallet abuse, self-dealing patterns, and unusually fast completions.",
     "/api/v1/admin/runners/performance": {
       get: {
         tags: ["Admin"],
@@ -2067,6 +2149,26 @@ const swaggerDocument = {
         parameters: [
           {
             in: "query",
+            name: "status",
+            schema: { type: "string", enum: ["open", "reviewed", "resolved", "dismissed"] },
+          },
+          {
+            in: "query",
+            name: "severity",
+            schema: { type: "string", enum: ["low", "medium", "high"] },
+          },
+          {
+            in: "query",
+            name: "flagType",
+            schema: {
+              type: "string",
+              enum: [
+                "repeated_cancellations",
+                "wallet_abuse",
+                "self_dealing_pattern",
+                "unusually_fast_completion",
+              ],
+            },
             name: "search",
             schema: { type: "string" },
           },
@@ -2095,6 +2197,23 @@ const swaggerDocument = {
             name: "limit",
             schema: { type: "integer", example: 20 },
           },
+        ],
+        responses: {
+          200: {
+            description: "Fraud flags fetched successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/FraudFlagListResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/v1/admin/fraud-flags/{flagId}/status": {
+      patch: {
+        tags: ["Admin"],
+        summary: "Update fraud flag review status",
           {
             in: "query",
             name: "sortBy",
@@ -2140,11 +2259,29 @@ const swaggerDocument = {
         parameters: [
           {
             in: "path",
+            name: "flagId",
             name: "runnerId",
             required: true,
             schema: { type: "string" },
           },
         ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/UpdateFraudFlagStatusRequest" },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Fraud flag status updated successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/FraudFlagResponse" },
+              },
+            },
+          },
         responses: {
           200: {
             description: "Runner performance metrics fetched successfully",
