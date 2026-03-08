@@ -16,6 +16,7 @@ import {
   buildRunnerPerformanceEntry,
 } from "../services/runnerPerformance.service.js";
 import { WalletTransaction } from "../models/walletTransaction.model.js";
+import { sanitizeAttachmentMetadata } from "../utils/attachmentMetadata.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -34,6 +35,10 @@ const reportPopulateFields = [
   },
   {
     path: "reviewedBy",
+    select: "fullName email phoneNumber role isVerified isActive",
+  },
+  {
+    path: "attachments.uploadedBy",
     select: "fullName email phoneNumber role isVerified isActive",
   },
   {
@@ -151,6 +156,9 @@ const sanitizeTask = (task) => {
     requestedBy: sanitizeTaskUser(task.requestedBy),
     assignedRunner: sanitizeTaskUser(task.assignedRunner),
     archivedBy: sanitizeTaskUser(task.archivedBy),
+    attachments: (task.attachments || []).map((attachment) =>
+      sanitizeAttachmentMetadata(attachment, sanitizeTaskUser),
+    ),
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
   };
@@ -164,6 +172,9 @@ const sanitizeReport = (report) => ({
   reportedTask: sanitizeTask(report.reportedTask),
   reason: report.reason,
   details: report.details,
+  attachments: (report.attachments || []).map((attachment) =>
+    sanitizeAttachmentMetadata(attachment, sanitizeUser),
+  ),
   status: report.status,
   reviewedBy: sanitizeUser(report.reviewedBy),
   reviewedAt: report.reviewedAt,

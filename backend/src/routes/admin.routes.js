@@ -13,6 +13,10 @@ import {
   updateReportStatus,
   updateUserCampusScopes,
 } from "../controllers/admin.controller.js";
+import {
+  addReportAttachment,
+  removeReportAttachment,
+} from "../controllers/reportAttachment.controller.js";
 import { authorizeRoles, verifyJWT } from "../middlewares/auth.middleware.js";
 import {
   createRateLimitMiddleware,
@@ -57,6 +61,9 @@ router.patch(
   updateFraudFlagStatus,
 );
 router.get("/reports", listReportedIssues);
+router.post("/reports/:reportId/attachments", addReportAttachment);
+router.delete("/reports/:reportId/attachments/:attachmentId", removeReportAttachment);
+router.patch("/reports/:reportId/status", updateReportStatus);
 router.patch(
   "/reports/:reportId/status",
   createRateLimitMiddleware(rateLimitPolicies.adminSensitive),
