@@ -11,6 +11,7 @@ import authRouter from "./routes/auth.routes.js";
 import campusRouter from "./routes/campus.routes.js";
 import disputeRouter from "./routes/dispute.routes.js";
 import profileRouter from "./routes/profile.routes.js";
+import referralRouter from "./routes/referral.routes.js";
 import taskRouter from "./routes/task.routes.js";
 import walletRouter from "./routes/wallet.routes.js";
 
@@ -49,6 +50,7 @@ app.use("/api/v1/admin", adminRouter)
 app.use("/api/v1/campuses", campusRouter)
 app.use("/api/v1/disputes", disputeRouter)
 app.use("/api/v1/profile", profileRouter)
+app.use("/api/v1/referrals", referralRouter)
 app.use("/api/v1/tasks", taskRouter)
 app.use("/api/v1/wallet", walletRouter)
 
