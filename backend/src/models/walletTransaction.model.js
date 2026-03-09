@@ -9,6 +9,12 @@ const allowedWalletTransactionStatuses = [
   "voided",
 ];
 const allowedWalletTransactionCategories = ["manual", "withdrawal_request"];
+const allowedWalletTransactionStatuses = ["pending", "completed", "failed"];
+const allowedWalletTransactionCategories = [
+  "manual",
+  "withdrawal_request",
+  "referral_reward",
+];
 
 const walletTransactionSchema = new mongoose.Schema(
   {
