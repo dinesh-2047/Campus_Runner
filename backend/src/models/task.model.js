@@ -73,6 +73,56 @@ const pricingSnapshotSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const promotionSnapshotSchema = new mongoose.Schema(
+  {
+    code: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    promotionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Promotion",
+      default: null,
+    },
+    kind: {
+      type: String,
+      enum: ["task_discount"],
+      default: "task_discount",
+    },
+    discountType: {
+      type: String,
+      enum: ["fixed", "percentage"],
+      default: "fixed",
+    },
+    discountValue: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    discountAmount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    originalReward: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    finalReward: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    appliedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false },
+);
+
 const taskSchema = new mongoose.Schema(
   {
     title: {
@@ -96,6 +146,12 @@ const taskSchema = new mongoose.Schema(
       trim: true,
     },
     campus: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+    campusZone: {
       type: String,
       trim: true,
       default: "",
@@ -137,6 +193,9 @@ const taskSchema = new mongoose.Schema(
     pricingSnapshot: {
       type: pricingSnapshotSchema,
       default: () => ({}),
+    promotionSnapshot: {
+      type: promotionSnapshotSchema,
+      default: null,
     },
     requestedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -244,6 +303,24 @@ const taskSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    archivedStatusSnapshot: {
+      type: String,
+      enum: [...allowedTaskStatuses, ""],
+      default: "",
+    },
+    restoredAt: {
+      type: Date,
+      default: null,
+    },
+    restoredBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    restoreReason: {
+      type: String,
+      trim: true,
+      default: "",
     attachments: {
       type: [attachmentMetadataSchema],
       default: [],
@@ -259,6 +336,7 @@ taskSchema.index({ status: 1, assignmentExpiresAt: 1, isArchived: 1 });
 taskSchema.index({ settlementStatus: 1, completedAt: -1 });
 taskSchema.index({ isArchived: 1, status: 1, createdAt: -1 });
 taskSchema.index({ campus: 1, status: 1, createdAt: -1 });
+taskSchema.index({ campusZone: 1, status: 1, createdAt: -1 });
 taskSchema.index({ transportMode: 1, status: 1, createdAt: -1 });
 taskSchema.index({ campus: 1, campusZone: 1, status: 1, createdAt: -1 });
 taskSchema.index({ requestedBy: 1, createdAt: -1 });
