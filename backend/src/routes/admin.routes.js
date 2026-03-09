@@ -2,19 +2,21 @@ import { Router } from "express";
 
 import {
   archiveTask,
+  getAdminAnalyticsDashboard,
   getUserCampusScopes,
   getRequesterReputationById,
   getRequesterReputationMetrics,
   listFraudFlags,
   getRunnerPerformanceById,
   getRunnerPerformanceMetrics,
-  getAdminAnalyticsDashboard,
+  listFraudFlags,
   listReportedIssues,
   suspendUser,
   updateFraudFlagStatus,
   updateReportStatus,
   updateUserCampusScopes,
 } from "../controllers/admin.controller.js";
+import { exportAdminResource } from "../controllers/adminExport.controller.js";
 import {
   addReportAttachment,
   removeReportAttachment,
@@ -42,6 +44,9 @@ router.get("/requesters/:requesterId/reputation", getRequesterReputationById);
 router.get("/runners/performance", getRunnerPerformanceMetrics);
 router.get("/runners/:runnerId/performance", getRunnerPerformanceById);
 router.get("/analytics/dashboard", getAdminAnalyticsDashboard);
+router.get("/exports/:resource", exportAdminResource);
+router.patch("/users/:userId/suspend", suspendUser);
+router.patch("/tasks/:taskId/archive", archiveTask);
 router.patch(
   "/users/:userId/suspend",
   createRateLimitMiddleware(rateLimitPolicies.adminSensitive),
