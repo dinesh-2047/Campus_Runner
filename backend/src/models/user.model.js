@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
@@ -84,6 +85,7 @@ const cooldownSchema = new mongoose.Schema(
   },
   { _id: true },
 );
+const generateInviteCode = () => crypto.randomBytes(4).toString("hex").toUpperCase();
 
 const userSchema = new mongoose.Schema(
   {
@@ -98,6 +100,14 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+    },
+    inviteCode: {
+      type: String,
+      unique: true,
+      uppercase: true,
+      trim: true,
+      default: generateInviteCode,
+      index: true,
     },
     password: {
       type: String,
