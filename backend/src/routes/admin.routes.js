@@ -23,6 +23,10 @@ import {
   updateReportStatus,
   updateUserCampusScopes,
 } from "../controllers/admin.controller.js";
+import {
+  getMaintenanceSettings,
+  updateMaintenanceSettings,
+} from "../controllers/maintenance.controller.js";
 import { createPromotion, listPromotions, updatePromotion } from "../controllers/promotion.controller.js";
 import { exportAdminResource } from "../controllers/adminExport.controller.js";
 import {
@@ -47,6 +51,8 @@ router.put(
   createIdempotencyMiddleware(),
   updateUserCampusScopes,
 );
+router.get("/maintenance", getMaintenanceSettings);
+router.patch("/maintenance", createIdempotencyMiddleware(), updateMaintenanceSettings);
 router.get("/promotions", listPromotions);
 router.post("/promotions", createIdempotencyMiddleware(), createPromotion);
 router.patch("/promotions/:promotionId", createIdempotencyMiddleware(), updatePromotion);
