@@ -6,6 +6,7 @@ const allowedWalletTransactionCategories = [
   "manual",
   "withdrawal_request",
   "runner_incentive",
+  "referral_reward",
 ];
 
 const walletTransactionSchema = new mongoose.Schema(
