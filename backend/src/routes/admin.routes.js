@@ -14,6 +14,7 @@ import {
   getRunnerPerformanceMetrics,
   listFraudFlags,
   listReportedIssues,
+  refundTaskLedger,
   restoreTask,
   restoreUser,
   suspendUser,
@@ -93,6 +94,7 @@ router.patch(
   createRateLimitMiddleware(rateLimitPolicies.adminSensitive),
 router.patch("/users/:userId/suspend", createIdempotencyMiddleware(), suspendUser);
 router.patch("/tasks/:taskId/archive", createIdempotencyMiddleware(), archiveTask);
+router.patch("/tasks/:taskId/refund", createIdempotencyMiddleware(), refundTaskLedger);
 router.get("/fraud-flags", listFraudFlags);
 router.patch(
   "/fraud-flags/:flagId/status",
