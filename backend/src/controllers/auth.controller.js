@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 
 import { Session } from "../models/session.model.js";
 import { User, allowedRoles } from "../models/user.model.js";
+import { createReferralAttribution } from "../services/referral.service.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -34,6 +35,7 @@ const sanitizeUser = (user) => ({
   phoneNumber: user.phoneNumber,
   campusId: user.campusId,
   campusName: user.campusName,
+  inviteCode: user.inviteCode,
   role: user.role,
   isVerified: user.isVerified,
   isActive: user.isActive,
@@ -118,7 +120,7 @@ const revokeSession = async ({ session, reason, clearUserRefreshToken = false, u
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { fullName, email, password, phoneNumber, campusId, campusName, role } =
+  const { fullName, email, password, phoneNumber, campusId, campusName, role, inviteCode } =
     req.body;
 
   if (!fullName || !email || !password) {
@@ -152,6 +154,18 @@ const registerUser = asyncHandler(async (req, res) => {
     sessionId: session._id,
     req,
   });
+  let referral = null;
+  if (inviteCode) {
+    referral = await createReferralAttribution({
+      inviteCode,
+      inviteeId: user._id,
+      attributionSource: "register",
+    });
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    user._id,
+  );
 
   const createdUser = await User.findById(user._id);
 
@@ -164,6 +178,7 @@ const registerUser = asyncHandler(async (req, res) => {
         201,
         {
           user: sanitizeUser(createdUser),
+          referral,
           accessToken,
           refreshToken,
         },
