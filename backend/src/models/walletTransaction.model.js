@@ -7,6 +7,7 @@ const allowedWalletTransactionCategories = [
   "withdrawal_request",
   "refund",
   "reversal",
+  "promotion_credit",
   "runner_incentive",
   "referral_reward",
 ];
